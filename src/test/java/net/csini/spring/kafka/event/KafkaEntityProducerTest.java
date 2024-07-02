@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.SpringKafkaEntityTestApplication;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Product;
@@ -16,7 +17,7 @@ public class KafkaEntityProducerTest {
 	private ExampleKafkaEntityProducer productProducer;
 
 	@Test
-	public void test_sendEvent() {
+	public void test_sendEvent() throws KafkaEntityException {
 		Product event = new Product();
 		event.setId("123456");
 		Assertions.assertNotNull(productProducer.sendEvent(event));
