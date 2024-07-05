@@ -6,6 +6,12 @@ import net.csini.spring.kafka.KafkaEntityException;
 
 public interface SimpleKafkaProducer<T>{
 
-	public CompletableFuture<Void> send(T event) throws KafkaEntityException;
+	/**
+	 * 
+	 * @param event
+	 * @return CompetableFuture<RecordMetadata.timestamp>
+	 * @throws KafkaEntityException
+	 */
+	public CompletableFuture<Long> send(T event) throws KafkaEntityException;
 
 }

@@ -1,5 +1,7 @@
 package net.csini.spring.kafka.event;
 
+import java.util.concurrent.ExecutionException;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,10 +19,12 @@ public class KafkaEntityProducerTest {
 	private ExampleKafkaEntityProducer productProducer;
 
 	@Test
-	public void test_sendEvent() throws KafkaEntityException {
+	public void test_sendEvent() throws KafkaEntityException, InterruptedException, ExecutionException {
 		Product event = new Product();
 		event.setId("123456");
-		Assertions.assertNotNull(productProducer.sendEvent(event));
+		Long sendEventTimestamp = productProducer.sendEvent(event);
+		System.out.println("sendEventTimestamp: " + sendEventTimestamp);
+		Assertions.assertNotNull(sendEventTimestamp);
 
 	}
 }

@@ -16,4 +16,6 @@ public @interface KafkaEntityProducer {
 //	      retries: 0
 //	      key-serializer: org.apache.kafka.common.serialization.StringSerializer
 //	      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+	String clientid();
 }

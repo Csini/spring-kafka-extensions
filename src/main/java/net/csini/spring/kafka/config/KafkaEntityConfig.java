@@ -64,8 +64,8 @@ public class KafkaEntityConfig {
 					
 					Class<? extends SimpleKafkaProducerImpl> creatorClass = SimpleKafkaProducerImpl.class;
 					Constructor<? extends SimpleKafkaProducerImpl> creatorCtor = creatorClass
-							.getConstructor(Class.class);
-					SimpleKafkaProducerImpl<?, ?> newInstance = creatorCtor.newInstance(entity);
+							.getConstructor(KafkaEntityProducer.class);
+					SimpleKafkaProducerImpl<?, ?> newInstance = creatorCtor.newInstance(kafkaEntityProducer);
 //					beanRegistry.registerSingleton(bean.getClass().getName() + "." + field.getName(), newInstance);
 
 					applicationContext.getAutowireCapableBeanFactory().autowireBean(newInstance);
