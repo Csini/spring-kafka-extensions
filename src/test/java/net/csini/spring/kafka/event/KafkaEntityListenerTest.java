@@ -1,20 +1,24 @@
 package net.csini.spring.kafka.event;
 
-import java.util.stream.Stream;
-
+import org.junit.jupiter.api.Assertions;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import net.csini.spring.kafka.KafkaEntityListener;
 import net.csini.spring.kafka.SpringKafkaEntityTestApplication;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
-import net.csini.spring.kafka.entity.Product;
 
-@SpringBootTest(classes = {SpringKafkaEntityTestApplication.class, KafkaEntityConfig.class})
+@SpringBootTest(classes = {SpringKafkaEntityTestApplication.class, KafkaEntityConfig.class, KafkaEntityListenersSpy.class})
 public class KafkaEntityListenerTest {
 
-	@KafkaEntityListener(entity = Product.class, batchSize=10)
-	public void test_product_listener(Stream<Product> events) {
-		System.out.println("Received message: " + events);
-
+	@Autowired
+	private KafkaEntityListenersSpy kafkaEntityListenersSpy;
+	
+	public void test_product_listener() {
+		
+		
+		//TODO
+		
+		Assertions.assertEquals(5, kafkaEntityListenersSpy.getSum());
+		Assertions.assertEquals(2,kafkaEntityListenersSpy.getInvokeCount());
 	}
 }

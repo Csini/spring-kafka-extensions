@@ -9,31 +9,31 @@ import net.csini.spring.kafka.KafkaEntityProducer;
 import net.csini.spring.kafka.entity.Product;
 import net.csini.spring.kafka.entity.Student;
 import net.csini.spring.kafka.entity.User;
-import net.csini.spring.kafka.producer.SimpleKafkaProducer;
+import net.csini.spring.kafka.producer.KafkaEntityFuture;
 
 @Service
 public class ExampleKafkaEntityProducer {
 
 	@KafkaEntityProducer(entity = Product.class, clientid = "testExampleKafkaEntityProducer")
-	private SimpleKafkaProducer<Product> productProducer;
+	private KafkaEntityFuture<Product> productProducer;
 	
 	
 	@KafkaEntityProducer(entity = User.class, clientid = "userExampleKafkaEntityProducer")
-	private SimpleKafkaProducer<User> userProducer;
+	private KafkaEntityFuture<User> userProducer;
 	
 	@KafkaEntityProducer(entity = Student.class, clientid = "studentExampleKafkaEntityProducer")
-	private SimpleKafkaProducer<Student> studentProducer;
+	private KafkaEntityFuture<Student> studentProducer;
 	
 	public Long sendEvent(Product p) throws KafkaEntityException, InterruptedException, ExecutionException {
-		return productProducer.send(p).get();
+		return productProducer.call(p).get();
 	}
 	
 	public Long sendUser(User u) throws KafkaEntityException, InterruptedException, ExecutionException {
-		return userProducer.send(u).get();
+		return userProducer.call(u).get();
 	}
 	
 	public Long sendStudent(Student s) throws KafkaEntityException, InterruptedException, ExecutionException {
-		return studentProducer.send(s).get();
+		return studentProducer.call(s).get();
 	}
 	
 }

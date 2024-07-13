@@ -12,13 +12,16 @@
 		<maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
 		<maven-resources-plugin.version>3.3.0</maven-resources-plugin.version>
 		<maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-		<spring-boot.version>3.1.5</spring-boot.version>
+		
+		<spring-boot.version>3.3.1</spring-boot.version>
+		
 		<junit-jupiter.version>5.9.1</junit-jupiter.version>
 		<native-build-tools-plugin.version>0.9.17</native-build-tools-plugin.version>
 		<logback.version>1.4.4</logback.version>
 		<slf4j.version>2.0.3</slf4j.version>
 
 		<spring-boot-starter-actuator.version>3.0.5</spring-boot-starter-actuator.version>
+		
 		<micrometer-registry-prometheus.version>1.10.5</micrometer-registry-prometheus.version>
 		<testcontainers-kafka.version>1.19.3</testcontainers-kafka.version>
 
@@ -31,6 +34,8 @@
 		<java.version>17</java.version>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
+
+		<!--		<rx.java.version>3.1.8</rx.java.version>-->
 
 	</properties>
 
@@ -78,8 +83,40 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
-<!--			<scope>test</scope>-->
+			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>jakarta.annotation</groupId>
+			<artifactId>jakarta.annotation-api</artifactId>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/io.reactivex.rxjava3/rxjava -->
+		<dependency>
+			<groupId>io.reactivex.rxjava3</groupId>
+			<artifactId>rxjava</artifactId>
+			<!--			<version>${rx.java.version}</version>-->
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<!--			<version>${logback.version}</version>-->
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-core</artifactId>
+			<!--			<version>${logback.version}</version>-->
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<!--			<version>${slf4j.version}</version>-->
+		</dependency>
+
 	</dependencies>
 	<build>
 		<plugins>
