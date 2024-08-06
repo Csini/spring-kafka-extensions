@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +15,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
-import net.csini.spring.kafka.entity.Product;
+import net.csini.spring.kafka.entity.Place;
 
 @Configuration
 public class KafkaProducerConfig {
@@ -31,15 +30,15 @@ public class KafkaProducerConfig {
 
 
     @Bean
-    public ProducerFactory<String, Product> producerFactory() {
+    public ProducerFactory<String, Place> producerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
-        return new DefaultKafkaProducerFactory<>(config, new JsonSerializer<String>(), new JsonSerializer<Product>());
+        return new DefaultKafkaProducerFactory<>(config, new JsonSerializer<String>(), new JsonSerializer<Place>());
     }
 
     @Bean
-    public KafkaTemplate<String, Product> kafkaProducer() {
+    public KafkaTemplate<String, Place> kafkaProducer() {
         return new KafkaTemplate<>(producerFactory());
     }
 }

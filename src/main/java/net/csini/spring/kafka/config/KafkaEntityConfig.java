@@ -68,6 +68,8 @@ public class KafkaEntityConfig {
 
 					applicationContext.getAutowireCapableBeanFactory().autowireBean(newInstance);
 
+					newInstance.afterPropertiesSet();
+					
 					field.setAccessible(true);
 					field.set(bean, newInstance);
 				} else if (field.isAnnotationPresent(KafkaEntityObservable.class)) {

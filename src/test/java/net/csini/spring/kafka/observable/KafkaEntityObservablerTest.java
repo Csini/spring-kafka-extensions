@@ -2,22 +2,26 @@ package net.csini.spring.kafka.observable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 
-import net.csini.spring.kafka.SpringKafkaEntityTestApplication;
+import io.reactivex.rxjava3.observables.ConnectableObservable;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
+import net.csini.spring.kafka.entity.Place;
 import net.csini.spring.kafka.entity.Product;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@SpringBootTest(classes = { SpringKafkaEntityTestApplication.class, KafkaEntityConfig.class,
+@SpringBootTest(classes = { SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
 		ExampleKafkaEntityObserver.class, KafkaProducerConfig.class })
 public class KafkaEntityObservablerTest {
 
@@ -27,44 +31,57 @@ public class KafkaEntityObservablerTest {
 	private ExampleKafkaEntityObserver observer;
 
 	@Autowired
-	private KafkaTemplate<String, Product> kafkaProducer;
+	private KafkaTemplate<String, Place> kafkaProducer;
 
-	private String TOPIC = "PRODUCT";
+	private String TOPIC = "PLACE";
 
 	@Test
 	public void test_sendEvent() throws Exception {
-		List<Product> eventList = new ArrayList<>();
+		List<Place> eventList = new ArrayList<>();
 
 
-		observer.getProductObservable().subscribe(r -> {
+		ConnectableObservable<Place> productObservable = observer.getPlaceObservable();
+		productObservable.subscribe(r -> {
 			LOGGER.info("received: " + r);
 			eventList.add(r);
 		});
-
 		
-		Thread.sleep(5000);
-
+		productObservable.connect();
+		
+		CountDownLatch sentCounter = new CountDownLatch(2);
 		//send events
-		publishMessages();
+		publishMessages(sentCounter);
+
+//		Thread.sleep(20000);
+		sentCounter.await();
 
 		System.out.println("eventList: " + eventList);
 		Assertions.assertEquals(2, eventList.size());
-
+		
 	}
 
-	void publishMessages() throws Exception {
+	void publishMessages(CountDownLatch sentCounter) throws Exception {
 
 		LOGGER.debug("publishMessages");
 
-		Product p1 = new Product();
-		p1.setId("p1id");
-		ProducerRecord<String, Product> p1Record = new ProducerRecord<>(TOPIC, p1.getId(), p1);
-		kafkaProducer.send(p1Record).get();
+		Place p1 = new Place("p1id");
+		ProducerRecord<String, Place> p1Record = new ProducerRecord<>(TOPIC, p1.id(), p1);
+		sendPlace(sentCounter, p1Record);
+		
+		Place p2 = new Place("p2id");
+		ProducerRecord<String, Place> p2Record = new ProducerRecord<>(TOPIC, p2.id(), p2);
+		sendPlace(sentCounter, p2Record);
+	}
 
-		Product p2 = new Product();
-		p2.setId("p2id");
-		ProducerRecord<String, Product> p2Record = new ProducerRecord<>(TOPIC, p2.getId(), p2);
-		kafkaProducer.send(p2Record).get();
+	private void sendPlace(CountDownLatch sentCounter, ProducerRecord<String, Place> record)
+			throws InterruptedException, ExecutionException {
+		CompletableFuture<SendResult<String, Place>> sendingIntoTheFuture = kafkaProducer.send(record);
+		
+		sendingIntoTheFuture.get();
+		while(!sendingIntoTheFuture.isDone()) {
+			LOGGER.info("waiting");
+		}
+		sentCounter.countDown();
 	}
 
 }

@@ -1,4 +1,4 @@
-package net.csini.spring.kafka.observable;
+package net.csini.spring.kafka.mapping;
 
 import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
 

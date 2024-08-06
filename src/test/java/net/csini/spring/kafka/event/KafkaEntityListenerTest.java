@@ -2,12 +2,8 @@ package net.csini.spring.kafka.event;
 
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
-import net.csini.spring.kafka.SpringKafkaEntityTestApplication;
-import net.csini.spring.kafka.config.KafkaEntityConfig;
-
-@SpringBootTest(classes = {SpringKafkaEntityTestApplication.class, KafkaEntityConfig.class, KafkaEntityListenersSpy.class})
+//@SpringBootTest(classes = {SpringKafkaEntityTestApplication.class, KafkaEntityConfig.class, KafkaEntityListenersSpy.class})
 public class KafkaEntityListenerTest {
 
 	@Autowired

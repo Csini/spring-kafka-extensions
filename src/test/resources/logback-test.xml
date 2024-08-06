@@ -10,13 +10,13 @@
 	
 	<!-- spring.kafka.bootstrap-servers=127.0.0.1:53461 -->
 	
-	 <logger name="net.csini.spring.kafka" level="debug" />
+	 <logger name="net.csini.spring.kafka" level="warn" />
 	 
      <logger name="org.apache.kafka.streams.KafkaStreams" level="debug" />
      
      <logger name="org.apache.kafka.streams" level="warn" />
      
-      <logger name="org.apache.kafka" level="debug" />
+      <logger name="org.apache.kafka" level="info" />
 
 	<root level="warn">
 		<appender-ref ref="STDOUT" />

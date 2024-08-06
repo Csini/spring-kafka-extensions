@@ -2,43 +2,33 @@ package net.csini.spring.kafka.observable;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
-import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.CommonErrorHandler;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
 import io.reactivex.rxjava3.core.ObservableOnSubscribe;
+import io.reactivex.rxjava3.observables.ConnectableObservable;
 import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
-import net.csini.spring.kafka.config.KafkaEntityConfig;
+import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
 
 public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe<T> {
 
@@ -105,6 +95,9 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 		keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
 
 		this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
+		
+		kafkaConsumer.seekToEnd(Collections.emptyList());
+		kafkaConsumer.commitSync();
 
 		this.kafkaConsumer.subscribe(List.of(getTopicName()));
 	}
@@ -118,36 +111,8 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 	}
 
 	@Bean
-	public ConsumerFactory<K, T> consumerFactory() {
-		Map<String, Object> props = new HashMap<>();
-		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
-//		props.put(ConsumerConfig.CLIENT_ID_CONFIG, environment.getRequestid().toString());
-
-		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-
-		// TODO KafkaEntityObservable
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
-		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 50); // default=500
-//		props.put(JsonDeserializer.TRUSTED_PACKAGES, "hu.exercise.spring.kafka.input");
-
-		return new DefaultKafkaConsumerFactory<>(props, new JsonDeserializer<>(getClazzKey()),
-				new JsonDeserializer<>(getClazz()));
-	}
-
-	@Bean
 	public KafkaConsumer<K, T> consumer() {
 		return this.kafkaConsumer;
-	}
-
-	@Bean
-	public ConcurrentKafkaListenerContainerFactory<K, T> kafkaListenerContainerFactory() {
-		ConcurrentKafkaListenerContainerFactory<K, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
-		factory.setConsumerFactory(consumerFactory());
-		factory.setCommonErrorHandler(errorHandler());
-//		factory.setBatchListener(true); // <<<<<<<<<<<<<<<<<<<<<<<<<
-		return factory;
 	}
 
 	private String getTopicName() {
@@ -160,11 +125,6 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 
 	private Topic extractTopic() {
 		return getClazz().getAnnotation(Topic.class);
-	}
-
-	private CommonErrorHandler errorHandler() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	@Override
@@ -195,26 +155,33 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 //		
 ////		future.get();
 	}
-
-	private T pollValue() {
-		// TODO Auto-generated method stub
-
-//		consumerFactory().createConsumer().poll(0)
-		return null;
+	
+	public ConsumerRecords<K, T> poll() {
+		LOGGER.warn("POLL");
+		return this.kafkaConsumer.poll(Duration.ofSeconds(10L));
 	}
 
-	public Observable<T> createObservable() {
+	public ConnectableObservable<T> createObservable() {
 
-		Observable<T> obs =
-		// Observable.fromCallable(() -> pollValue())
-//				Observable.create(this)
-				Observable.fromIterable(this.kafkaConsumer.poll(Duration.ofSeconds(10L)))
-						.map(consumerRecord -> consumerRecord.value())
-						.repeatWhen(o -> o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS)));
-//		ConnectableObservable<T> connectable
-//		  = o.publish();
+//		Observable<T> obs =
+//		// Observable.fromCallable(() -> pollValue())
+////				Observable.create(this)
+//				Observable.fromIterable(poll())
+//						.map(consumerRecord -> consumerRecord.value())
+//						.repeatWhen(o -> o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS)));
+////		ConnectableObservable<T> connectable
+////		  = o.publish();
+		
+//		Observable<T> obs = Observable.timer(30, TimeUnit.SECONDS).map(t -> poll()).reduce
+//				.map(consumerRecord -> consumerRecord.value()).publish();
 
-		return obs;
+		Observable<T> obs = Observable.create(s -> {
+			poll().forEach(consumerRecord -> s.onNext(consumerRecord.value()));
+//			s.onComplete();
+		});
+		
+		return obs.doOnError(error -> LOGGER.error("onerror-1",error)).doOnComplete(() -> LOGGER.warn("oncomplete-1")).repeatWhen(o -> o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS)))
+				.doOnTerminate(() -> LOGGER.warn("onterminate")).doOnError(error -> LOGGER.error("onerror",error)).doOnComplete(() -> LOGGER.warn("oncomplete")).publish();
 
 	}
 //	2024-07-10 | 09:41:35.395 |                                                             pool-2-thread-1 | DEBUG |              o.a.k.clients.NetworkClient | [Consumer clientId=consumer-testgroupid-1, groupId=testgroupid] Sending metadata request MetadataRequestData(topics=[MetadataRequestTopic(topicId=AAAAAAAAAAAAAAAAAAAAAA, name='PRODUCT')], allowAutoTopicCreation=true, includeClusterAuthorizedOperations=false, includeTopicAuthorizedOperations=false) to node localhost:9092 (id: 1 rack: null)
