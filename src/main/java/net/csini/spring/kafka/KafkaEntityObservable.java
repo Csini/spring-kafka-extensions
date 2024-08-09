@@ -11,8 +11,6 @@ public @interface KafkaEntityObservable {
 
 	Class entity();
 
-	String groupid();
-
 //	  consumer:
 //	      group-id: siTestGroup
 //	      auto-offset-reset: earliest

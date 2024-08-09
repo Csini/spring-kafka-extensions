@@ -33,7 +33,7 @@ public class KafkaEntityObservablerTest {
 	@Autowired
 	private KafkaTemplate<String, Place> kafkaProducer;
 
-	private String TOPIC = "PLACE";
+	private String TOPIC = "net.csini.spring.kafka.entity.Place";
 
 	@Test
 	public void test_sendEvent() throws Exception {

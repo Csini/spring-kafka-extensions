@@ -11,7 +11,7 @@ import net.csini.spring.kafka.entity.Place;
 @Getter
 public class ExampleKafkaEntityObserver {
 
-	@KafkaEntityObservable(entity = Place.class, groupid = "testgroupid")
+	@KafkaEntityObservable(entity = Place.class)
 	private ConnectableObservable<Place> placeObservable;
 
 }

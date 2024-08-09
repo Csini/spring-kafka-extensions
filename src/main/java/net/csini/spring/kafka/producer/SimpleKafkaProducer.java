@@ -81,24 +81,6 @@ public class SimpleKafkaProducer<T, K>
 
 		this.kafkaProducer = new KafkaProducer<K, T>(configProps, keySerializer, valueSerializer);
 
-		Map<String, Object> conf = new HashMap<>();
-		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
-		AdminClient admin = AdminClient.create(conf);
-
-		ListTopicsResult listTopics = admin.listTopics();
-		Set<String> names = listTopics.names().get();
-		boolean contains = names.contains(this.topic);
-		if (!contains) {
-			List<NewTopic> topicList = new ArrayList<NewTopic>();
-			Map<String, String> configs = new HashMap<String, String>();
-			int partitions = 1;
-			Short replication = 1;
-			NewTopic newTopic = new NewTopic(this.topic, partitions, replication).configs(configs);
-			topicList.add(newTopic);
-			admin.createTopics(topicList);
-		}
-
 //	      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
