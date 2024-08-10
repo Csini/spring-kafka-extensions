@@ -63,9 +63,9 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 
 //	ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-	public SimpleKafkaObservableHandler(KafkaEntityObservable kafkaEntityObservable) throws KafkaEntityException {
+	public SimpleKafkaObservableHandler(KafkaEntityObservable kafkaEntityObservable, String beanName) throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
-		this.groupid = getTopicName() + "-observer";
+		this.groupid = /*getTopicName() + "-observer-" +*/ beanName;
 
 		boolean foundKey = false;
 
@@ -87,6 +87,28 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 		if (!foundKey) {
 			throw new KafkaEntityException("@Key is mandatory in @KafkaEntity");
 		}
+		
+		Map<String, Object> properties = new HashMap<>();
+		properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+//		properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+//		properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+		// TODO
+//		properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
+		properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
+
+//		Serde<T> serde = Serdes.serdeFrom(getClazz());
+
+//		properties.put(JsonDeserializer.TRUSTED_PACKAGES, getClazz().getPackageName());
+		JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(getClazz());
+		JsonKeyDeserializer<K> keyDeserializer = new JsonKeyDeserializer<>(getClazzKey());
+		// TODO
+		valueDeserializer.addTrustedPackages(getClazz().getPackageName());
+		keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
+
+		this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
+
+//		kafkaConsumer.seekToEnd(Collections.emptyList());
+//		kafkaConsumer.commitSync();
 	}
 
 	public Class<T> getClazz() {
@@ -116,46 +138,28 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 
 	@Override
 	public void subscribe(@NonNull ObservableEmitter<@NonNull T> emitter) throws Throwable {
-
-		Map<String, Object> properties = new HashMap<>();
-		properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-//		properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-//		properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-		// TODO
-//		properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
-		properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
-
-//		Serde<T> serde = Serdes.serdeFrom(getClazz());
-
-//		properties.put(JsonDeserializer.TRUSTED_PACKAGES, getClazz().getPackageName());
-		JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(getClazz());
-		JsonKeyDeserializer<K> keyDeserializer = new JsonKeyDeserializer<>(getClazzKey());
-		// TODO
-		valueDeserializer.addTrustedPackages(getClazz().getPackageName());
-		keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
-
-		this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
-
-		kafkaConsumer.seekToEnd(Collections.emptyList());
-		kafkaConsumer.commitSync();
+		
+		LOGGER.warn("subscribed: " + emitter);
 
 		this.kafkaConsumer.subscribe(List.of(getTopicName()));
 
 		poll().forEach(consumerRecord -> emitter.onNext(consumerRecord.value()));
 
-		emitter.setDisposable(Disposable.fromAction(() -> {
-			kafkaConsumer.unsubscribe();
-			destroy();
-		}));
+//		emitter.setDisposable(Disposable.fromAction(() -> {
+//			kafkaConsumer.unsubscribe();
+//			destroy();
+//		}));
+//		
+//		emitter.setCancellable(() -> {
+//			kafkaConsumer.unsubscribe();
+//			destroy();
+//		});
 		
-		emitter.setCancellable(() -> {
-			kafkaConsumer.unsubscribe();
-			destroy();
-		});
+		emitter.onComplete();
 	}
 
 	private ConsumerRecords<K, T> poll() {
-		LOGGER.warn("POLL");
+		LOGGER.warn("POLL-"+groupid);
 		return this.kafkaConsumer.poll(Duration.ofSeconds(10L));
 	}
 

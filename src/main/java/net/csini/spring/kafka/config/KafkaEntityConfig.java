@@ -109,21 +109,27 @@ public class KafkaEntityConfig {
 
 					Class<? extends SimpleKafkaObservableHandler> creatorClass = SimpleKafkaObservableHandler.class;
 					Constructor<? extends SimpleKafkaObservableHandler> creatorCtor = creatorClass
-							.getConstructor(KafkaEntityObservable.class);
-					SimpleKafkaObservableHandler<?, ?> handler = creatorCtor.newInstance(kafkaEntityObserverable);
+							.getConstructor(KafkaEntityObservable.class, String.class);
+					SimpleKafkaObservableHandler<?, ?> handler = creatorCtor.newInstance(kafkaEntityObserverable,
+							bean.getClass().getName() + "#" + field.getName());
 //					beanRegistry.registerSingleton(bean.getClass().getName() + "." + field.getName(), newInstance);
 //					Observable<?> newInstance = Observable.create(handler);
 
 					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
 							.getAutowireCapableBeanFactory();
-					registry.registerDisposableBean(beanName + "Handler", handler);
+					registry.registerDisposableBean(field.getName() + "Handler", handler);
 
-					ConnectableObservable<?> obs = Observable.create(handler).doOnError(error -> LOGGER.error("onerror-1", error))
-							.doOnComplete(() -> LOGGER.warn("oncomplete-1"))
-							.repeatWhen(o -> o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS)))
-							.doOnTerminate(() -> LOGGER.warn("onterminate"))
-							.doOnError(error -> LOGGER.error("onerror", error))
-							.doOnComplete(() -> LOGGER.warn("oncomplete")).publish();
+					ConnectableObservable<?> obs = Observable.create(handler)
+//							.doOnError(error -> LOGGER.error("onerror-1", error))
+//							.doOnComplete(() -> LOGGER.warn("oncomplete-1"))
+							.repeatWhen(o -> {
+								LOGGER.warn("repeating....");
+								return o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS));
+							})
+//							.doOnTerminate(() -> LOGGER.warn("onterminate"))
+//							.doOnError(error -> LOGGER.error("onerror", error))
+//							.doOnComplete(() -> LOGGER.warn("oncomplete"))
+							.publish();
 
 					applicationContext.getAutowireCapableBeanFactory().autowireBean(obs);
 

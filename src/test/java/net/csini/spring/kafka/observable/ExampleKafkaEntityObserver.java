@@ -13,6 +13,9 @@ public class ExampleKafkaEntityObserver {
 
 	@KafkaEntityObservable(entity = Place.class)
 	private ConnectableObservable<Place> placeObservable;
+	
+	@KafkaEntityObservable(entity = Place.class)
+	private ConnectableObservable<Place> placeObservableOther;
 
 }
 	

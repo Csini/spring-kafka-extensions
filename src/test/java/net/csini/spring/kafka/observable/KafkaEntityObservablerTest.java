@@ -16,6 +16,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.observables.ConnectableObservable;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Place;
@@ -38,6 +40,7 @@ public class KafkaEntityObservablerTest {
 	@Test
 	public void test_sendEvent() throws Exception {
 		List<Place> eventList = new ArrayList<>();
+		List<Place> eventListOther = new ArrayList<>();
 
 
 		ConnectableObservable<Place> productObservable = observer.getPlaceObservable();
@@ -46,29 +49,46 @@ public class KafkaEntityObservablerTest {
 			eventList.add(r);
 		});
 		
-		productObservable.connect();
+		@NonNull
+		Disposable connect1 = productObservable.connect();
 		
 		CountDownLatch sentCounter = new CountDownLatch(2);
 		//send events
-		publishMessages(sentCounter);
-
+		publishMessages(sentCounter, 100);
+		
 //		Thread.sleep(20000);
 		sentCounter.await();
-
-		System.out.println("eventList: " + eventList);
+		Thread.sleep(60000);
+		connect1.dispose();
+		
+		ConnectableObservable<Place> productObservableOther = observer.getPlaceObservableOther();
+		productObservable.subscribe(r -> {
+			LOGGER.info("received-other: " + r);
+			eventListOther.add(r);
+		});
+		
+		@NonNull
+		Disposable connect2 = productObservableOther.connect();
+		
+		Thread.sleep(60000);
+		connect2.dispose();
+		
+		System.out.println("eventList     : " + eventList);
+		System.out.println("eventListOther: " + eventListOther);
 		Assertions.assertEquals(2, eventList.size());
+		Assertions.assertEquals(0, eventListOther.size());
 		
 	}
 
-	void publishMessages(CountDownLatch sentCounter) throws Exception {
+	void publishMessages(CountDownLatch sentCounter, int i) throws Exception {
 
 		LOGGER.debug("publishMessages");
 
-		Place p1 = new Place("p1id");
+		Place p1 = new Place("p"+i+"id");
 		ProducerRecord<String, Place> p1Record = new ProducerRecord<>(TOPIC, p1.id(), p1);
 		sendPlace(sentCounter, p1Record);
 		
-		Place p2 = new Place("p2id");
+		Place p2 = new Place("p"+(i++)+"id");
 		ProducerRecord<String, Place> p2Record = new ProducerRecord<>(TOPIC, p2.id(), p2);
 		sendPlace(sentCounter, p2Record);
 	}
