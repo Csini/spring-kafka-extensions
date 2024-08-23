@@ -2,7 +2,7 @@ package net.csini.spring.kafka.observable;
 
 import org.springframework.stereotype.Service;
 
-import io.reactivex.rxjava3.observables.ConnectableObservable;
+import io.reactivex.rxjava3.core.Observable;
 import lombok.Getter;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.entity.Place;
@@ -12,10 +12,10 @@ import net.csini.spring.kafka.entity.Place;
 public class ExampleKafkaEntityObserver {
 
 	@KafkaEntityObservable(entity = Place.class)
-	private ConnectableObservable<Place> placeObservable;
+	private Observable<Place> placeObservable;
 	
 	@KafkaEntityObservable(entity = Place.class)
-	private ConnectableObservable<Place> placeObservableOther;
+	private Observable<Place> placeObservableOther;
 
 }
 	

@@ -3,6 +3,7 @@ package net.csini.spring.kafka.config;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -26,8 +26,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.observables.ConnectableObservable;
 import jakarta.annotation.PostConstruct;
 import net.csini.spring.kafka.KafkaEntity;
 import net.csini.spring.kafka.KafkaEntityException;
@@ -108,30 +106,39 @@ public class KafkaEntityConfig {
 					autoCreateTopic(entity);
 
 					Class<? extends SimpleKafkaObservableHandler> creatorClass = SimpleKafkaObservableHandler.class;
-					Constructor<? extends SimpleKafkaObservableHandler> creatorCtor = creatorClass
-							.getConstructor(KafkaEntityObservable.class, String.class);
-					SimpleKafkaObservableHandler<?, ?> handler = creatorCtor.newInstance(kafkaEntityObserverable,
-							bean.getClass().getName() + "#" + field.getName());
-//					beanRegistry.registerSingleton(bean.getClass().getName() + "." + field.getName(), newInstance);
-//					Observable<?> newInstance = Observable.create(handler);
+//					Constructor<? extends SimpleKafkaObservableHandler> creatorCtor = creatorClass
+//							.getConstructor(KafkaEntityObservable.class, String.class);
+//					SimpleKafkaObservableHandler<?, ?> handler = creatorCtor.newInstance(kafkaEntityObserverable,
+//							bean.getClass().getName() + "#" + field.getName());
+////					beanRegistry.registerSingleton(bean.getClass().getName() + "." + field.getName(), newInstance);
+////					Observable<?> newInstance = Observable.create(handler);
+//
+//					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
+//							.getAutowireCapableBeanFactory();
+//					registry.registerDisposableBean(field.getName() + "Handler", handler);
+//
+//					ConnectableObservable<?> obs = Observable.create(handler)
+////							.doOnError(error -> LOGGER.error("onerror-1", error))
+////							.doOnComplete(() -> LOGGER.warn("oncomplete-1"))
+//							.repeatWhen(o -> {
+//								LOGGER.warn("repeating....");
+//								return o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS));
+//							})
+////							.doOnTerminate(() -> LOGGER.warn("onterminate"))
+////							.doOnError(error -> LOGGER.error("onerror", error))
+////							.doOnComplete(() -> LOGGER.warn("oncomplete"))
+//							.publish();
 
+					Class<SimpleKafkaObservableHandler> clazz = SimpleKafkaObservableHandler.class;
+					Method method = clazz.getMethod("create", KafkaEntityObservable.class, String.class);
+
+					String newBeanName = bean.getClass().getName() + "#" + field.getName();
+					Object obj = method.invoke(null, kafkaEntityObserverable, newBeanName);
+					SimpleKafkaObservableHandler<?, ?> newInstance = (SimpleKafkaObservableHandler<?, ?>) obj;
 					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
 							.getAutowireCapableBeanFactory();
-					registry.registerDisposableBean(field.getName() + "Handler", handler);
-
-					ConnectableObservable<?> obs = Observable.create(handler)
-//							.doOnError(error -> LOGGER.error("onerror-1", error))
-//							.doOnComplete(() -> LOGGER.warn("oncomplete-1"))
-							.repeatWhen(o -> {
-								LOGGER.warn("repeating....");
-								return o.concatMap(v -> Observable.timer(20, TimeUnit.SECONDS));
-							})
-//							.doOnTerminate(() -> LOGGER.warn("onterminate"))
-//							.doOnError(error -> LOGGER.error("onerror", error))
-//							.doOnComplete(() -> LOGGER.warn("oncomplete"))
-							.publish();
-
-					applicationContext.getAutowireCapableBeanFactory().autowireBean(obs);
+					registry.registerDisposableBean(newBeanName, newInstance);
+//					applicationContext.getAutowireCapableBeanFactory().autowireBean(obs);
 
 //					ObservableOnSubscribe<?> handler = emitter -> {
 //
@@ -151,7 +158,7 @@ public class KafkaEntityConfig {
 //					applicationContext.getAutowireCapableBeanFactory().autowireBean(newInstance);
 //					
 					field.setAccessible(true);
-					field.set(bean, obs);
+					field.set(bean, newInstance);
 				}
 			}
 		}

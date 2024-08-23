@@ -9,13 +9,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteConsumerGroupsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.KafkaFuture;
@@ -27,21 +30,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
+import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.NonNull;
-import io.reactivex.rxjava3.annotations.Nullable;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.ObservableEmitter;
-import io.reactivex.rxjava3.core.ObservableOnSubscribe;
+import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.functions.Cancellable;
-import io.reactivex.rxjava3.observables.ConnectableObservable;
+import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
 
-public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe<T>, DisposableBean, InitializingBean {
+public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaObservableHandler.class);
 
@@ -61,11 +62,16 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 
 	KafkaConsumer<K, T> kafkaConsumer;
 
+	private AtomicBoolean stopped = new AtomicBoolean(false);
+
+	ExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
 //	ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-	public SimpleKafkaObservableHandler(KafkaEntityObservable kafkaEntityObservable, String beanName) throws KafkaEntityException {
+	SimpleKafkaObservableHandler(KafkaEntityObservable kafkaEntityObservable, String beanName)
+			throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
-		this.groupid = /*getTopicName() + "-observer-" +*/ beanName;
+		this.groupid = /* getTopicName() + "-observer-" + */ beanName;
 
 		boolean foundKey = false;
 
@@ -87,28 +93,9 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 		if (!foundKey) {
 			throw new KafkaEntityException("@Key is mandatory in @KafkaEntity");
 		}
-		
-		Map<String, Object> properties = new HashMap<>();
-		properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-//		properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-//		properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-		// TODO
-//		properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
-		properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
 
-//		Serde<T> serde = Serdes.serdeFrom(getClazz());
-
-//		properties.put(JsonDeserializer.TRUSTED_PACKAGES, getClazz().getPackageName());
-		JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(getClazz());
-		JsonKeyDeserializer<K> keyDeserializer = new JsonKeyDeserializer<>(getClazzKey());
-		// TODO
-		valueDeserializer.addTrustedPackages(getClazz().getPackageName());
-		keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
-
-		this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
-
-//		kafkaConsumer.seekToEnd(Collections.emptyList());
-//		kafkaConsumer.commitSync();
+		subscribers = new AtomicReference<>(EMPTY);
+		start();
 	}
 
 	public Class<T> getClazz() {
@@ -136,30 +123,83 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 		return getClazz().getAnnotation(Topic.class);
 	}
 
-	@Override
-	public void subscribe(@NonNull ObservableEmitter<@NonNull T> emitter) throws Throwable {
-		
-		LOGGER.warn("subscribed: " + emitter);
+//	@Override
+//	public void subscribe(@NonNull ObservableEmitter<@NonNull T> emitter) throws Throwable {
+//
+//		LOGGER.warn("subscribed: " + emitter);
+//
+//		this.kafkaConsumer.subscribe(List.of(getTopicName()));
+//
+//		poll().forEach(consumerRecord -> emitter.onNext(consumerRecord.value()));
+//
+////		emitter.setDisposable(Disposable.fromAction(() -> {
+////			kafkaConsumer.unsubscribe();
+////			destroy();
+////		}));
+////		
+////		emitter.setCancellable(() -> {
+////			kafkaConsumer.unsubscribe();
+////			destroy();
+////		});
+//
+//		emitter.onComplete();
+//	}
 
-		this.kafkaConsumer.subscribe(List.of(getTopicName()));
+	public void start() {
 
-		poll().forEach(consumerRecord -> emitter.onNext(consumerRecord.value()));
+		LOGGER.warn("starting...");
 
-//		emitter.setDisposable(Disposable.fromAction(() -> {
-//			kafkaConsumer.unsubscribe();
-//			destroy();
-//		}));
-//		
-//		emitter.setCancellable(() -> {
-//			kafkaConsumer.unsubscribe();
-//			destroy();
-//		});
-		
-		emitter.onComplete();
+		executor.submit(() -> {
+
+			Map<String, Object> properties = new HashMap<>();
+			properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+//			properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+//			properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
+			// TODO
+//			properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
+			properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
+
+//			Serde<T> serde = Serdes.serdeFrom(getClazz());
+
+//			properties.put(JsonDeserializer.TRUSTED_PACKAGES, getClazz().getPackageName());
+			JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(getClazz());
+			JsonKeyDeserializer<K> keyDeserializer = new JsonKeyDeserializer<>(getClazzKey());
+			// TODO
+			valueDeserializer.addTrustedPackages(getClazz().getPackageName());
+			keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
+
+			this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
+
+//			kafkaConsumer.seekToEnd(Collections.emptyList());
+//			kafkaConsumer.commitSync();
+
+			this.kafkaConsumer.subscribe(List.of(getTopicName()));
+			while (!stopped.get()) {
+				if (subscribers.get().length > 0) {
+					pollIteration();
+				}
+			}
+
+			kafkaConsumer.unsubscribe();
+			kafkaConsumer.close();
+		});
+	}
+
+	public void stop() {
+		this.stopped.set(true);
+	}
+
+	private void pollIteration() {
+		poll().forEach(r -> {
+			for (KafkaEntityObservableDisposable<T, K> pd : subscribers.get()) {
+				pd.onNext(r.value());
+			}
+		});
+
 	}
 
 	private ConsumerRecords<K, T> poll() {
-		LOGGER.warn("POLL-"+groupid);
+		LOGGER.warn("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
 		return this.kafkaConsumer.poll(Duration.ofSeconds(10L));
 	}
 
@@ -187,9 +227,9 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 
 		LOGGER.warn("*** Starting AdminClient to delete a Consumer Group ***");
 
-		kafkaConsumer.unsubscribe();
-		kafkaConsumer.close();
-		
+		stop();
+		executor.shutdown();
+
 		final Properties properties = new Properties();
 		properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		properties.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "1000");
@@ -205,6 +245,247 @@ public class SimpleKafkaObservableHandler<T, K> implements ObservableOnSubscribe
 		}
 
 //	    adminClient.close();		
+	}
+
+	/** The terminated indicator for the subscribers array. */
+	@SuppressWarnings("rawtypes")
+	static final KafkaEntityObservableDisposable[] TERMINATED = new KafkaEntityObservableDisposable[0];
+	/** An empty subscribers array to avoid allocating it all the time. */
+	@SuppressWarnings("rawtypes")
+	static final KafkaEntityObservableDisposable[] EMPTY = new KafkaEntityObservableDisposable[0];
+
+	/** The array of currently subscribed subscribers. */
+	final AtomicReference<KafkaEntityObservableDisposable<T, K>[]> subscribers;
+
+	/** The error, write before terminating and read after checking subscribers. */
+	Throwable error;
+
+	/**
+	 * Constructs a SimpleKafkaObservableHandler.
+	 * 
+	 * @param <T> the value type
+	 * @return the new SimpleKafkaObservableHandler
+	 * @throws KafkaEntityException
+	 */
+	@CheckReturnValue
+	@NonNull
+	public static <T, K> SimpleKafkaObservableHandler<T, K> create(KafkaEntityObservable kafkaEntityObservable,
+			String beanName) throws KafkaEntityException {
+		return new SimpleKafkaObservableHandler<T, K>(kafkaEntityObservable, beanName);
+	}
+
+	@Override
+	protected void subscribeActual(Observer<? super T> t) {
+		KafkaEntityObservableDisposable<T, K> ps = new KafkaEntityObservableDisposable<>(t, this);
+		t.onSubscribe(ps);
+		if (add(ps)) {
+			// if cancellation happened while a successful add, the remove() didn't work
+			// so we need to do it again
+			if (ps.isDisposed()) {
+				remove(ps);
+			}
+		} else {
+			Throwable ex = error;
+			if (ex != null) {
+				t.onError(ex);
+			} else {
+				t.onComplete();
+			}
+		}
+	}
+
+	/**
+	 * Tries to add the given subscriber to the subscribers array atomically or
+	 * returns false if the subject has terminated.
+	 * 
+	 * @param ps the subscriber to add
+	 * @return true if successful, false if the subject has terminated
+	 */
+	boolean add(KafkaEntityObservableDisposable<T, K> ps) {
+		for (;;) {
+			KafkaEntityObservableDisposable<T, K>[] a = subscribers.get();
+			if (a == TERMINATED) {
+				return false;
+			}
+
+			int n = a.length;
+			@SuppressWarnings("unchecked")
+			KafkaEntityObservableDisposable<T, K>[] b = new KafkaEntityObservableDisposable[n + 1];
+			System.arraycopy(a, 0, b, 0, n);
+			b[n] = ps;
+
+			if (subscribers.compareAndSet(a, b)) {
+				return true;
+			}
+		}
+	}
+
+	/**
+	 * Atomically removes the given subscriber if it is subscribed to the subject.
+	 * 
+	 * @param ps the subject to remove
+	 */
+	@SuppressWarnings("unchecked")
+	void remove(KafkaEntityObservableDisposable<T, K> ps) {
+		for (;;) {
+			KafkaEntityObservableDisposable<T, K>[] a = subscribers.get();
+			if (a == TERMINATED || a == EMPTY) {
+				return;
+			}
+
+			int n = a.length;
+			int j = -1;
+			for (int i = 0; i < n; i++) {
+				if (a[i] == ps) {
+					j = i;
+					break;
+				}
+			}
+
+			if (j < 0) {
+				return;
+			}
+
+			KafkaEntityObservableDisposable<T, K>[] b;
+
+			if (n == 1) {
+				b = EMPTY;
+			} else {
+				b = new KafkaEntityObservableDisposable[n - 1];
+				System.arraycopy(a, 0, b, 0, j);
+				System.arraycopy(a, j + 1, b, j, n - j - 1);
+			}
+			if (subscribers.compareAndSet(a, b)) {
+				return;
+			}
+		}
+	}
+
+//    @Override
+//    public void onSubscribe(Disposable d) {
+//        if (subscribers.get() == TERMINATED) {
+//            d.dispose();
+//        }
+//    }
+//
+//    @Override
+//    public void onNext(T t) {
+//        ExceptionHelper.nullCheck(t, "onNext called with a null value.");
+//        for (KafkaEntityObservableDisposable<T> pd : subscribers.get()) {
+//            pd.onNext(t);
+//        }
+//    }
+//
+//    @SuppressWarnings("unchecked")
+//    @Override
+//    public void onError(Throwable t) {
+//        ExceptionHelper.nullCheck(t, "onError called with a null Throwable.");
+//        if (subscribers.get() == TERMINATED) {
+//            RxJavaPlugins.onError(t);
+//            return;
+//        }
+//        error = t;
+//
+//        for (KafkaEntityObservableDisposable<T> pd : subscribers.getAndSet(TERMINATED)) {
+//            pd.onError(t);
+//        }
+//    }
+//
+//    @SuppressWarnings("unchecked")
+//    @Override
+//    public void onComplete() {
+//        if (subscribers.get() == TERMINATED) {
+//            return;
+//        }
+//        for (KafkaEntityObservableDisposable<T> pd : subscribers.getAndSet(TERMINATED)) {
+//            pd.onComplete();
+//        }
+//    }
+//
+//    @Override
+//    @CheckReturnValue
+//    public boolean hasObservers() {
+//        return subscribers.get().length != 0;
+//    }
+//
+//    @Override
+//    @Nullable
+//    @CheckReturnValue
+//    public Throwable getThrowable() {
+//        if (subscribers.get() == TERMINATED) {
+//            return error;
+//        }
+//        return null;
+//    }
+//
+//    @Override
+//    @CheckReturnValue
+//    public boolean hasThrowable() {
+//        return subscribers.get() == TERMINATED && error != null;
+//    }
+//
+//    @Override
+//    @CheckReturnValue
+//    public boolean hasComplete() {
+//        return subscribers.get() == TERMINATED && error == null;
+//    }
+
+	/**
+	 * Wraps the actual subscriber, tracks its requests and makes cancellation to
+	 * remove itself from the current subscribers array.
+	 *
+	 * @param <T> the value type
+	 */
+	static final class KafkaEntityObservableDisposable<T, K> extends AtomicBoolean implements Disposable {
+
+		private static final long serialVersionUID = 3562861878281475070L;
+		/** The actual subscriber. */
+		final Observer<? super T> downstream;
+		/** The subject state. */
+		final SimpleKafkaObservableHandler<T, K> parent;
+
+		/**
+		 * Constructs a PublishSubscriber, wraps the actual subscriber and the state.
+		 * 
+		 * @param actual the actual subscriber
+		 * @param parent the parent PublishProcessor
+		 */
+		KafkaEntityObservableDisposable(Observer<? super T> actual, SimpleKafkaObservableHandler<T, K> parent) {
+			this.downstream = actual;
+			this.parent = parent;
+		}
+
+		public void onNext(T t) {
+			if (!get()) {
+				downstream.onNext(t);
+			}
+		}
+
+		public void onError(Throwable t) {
+			if (get()) {
+				RxJavaPlugins.onError(t);
+			} else {
+				downstream.onError(t);
+			}
+		}
+
+		public void onComplete() {
+			if (!get()) {
+				downstream.onComplete();
+			}
+		}
+
+		@Override
+		public void dispose() {
+			if (compareAndSet(false, true)) {
+				parent.remove(this);
+			}
+		}
+
+		@Override
+		public boolean isDisposed() {
+			return get();
+		}
 	}
 
 }

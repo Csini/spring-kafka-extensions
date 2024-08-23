@@ -17,11 +17,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
 import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.observables.ConnectableObservable;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Place;
-import net.csini.spring.kafka.entity.Product;
 
 @SpringBootTest(classes = { SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
 		ExampleKafkaEntityObserver.class, KafkaProducerConfig.class })
@@ -43,35 +43,37 @@ public class KafkaEntityObservablerTest {
 		List<Place> eventListOther = new ArrayList<>();
 
 
-		ConnectableObservable<Place> productObservable = observer.getPlaceObservable();
-		productObservable.subscribe(r -> {
+		Observable<Place> productObservable = observer.getPlaceObservable();
+		@NonNull
+		Disposable connect1 =productObservable.subscribe(r -> {
 			LOGGER.info("received: " + r);
 			eventList.add(r);
 		});
 		
-		@NonNull
-		Disposable connect1 = productObservable.connect();
 		
 		CountDownLatch sentCounter = new CountDownLatch(2);
 		//send events
 		publishMessages(sentCounter, 100);
-		
+		LOGGER.warn("sentCounter.await()");
 //		Thread.sleep(20000);
 		sentCounter.await();
-		Thread.sleep(60000);
+		LOGGER.warn("waiting 20_0000");
+		Thread.sleep(20_000);
 		connect1.dispose();
 		
-		ConnectableObservable<Place> productObservableOther = observer.getPlaceObservableOther();
-		productObservable.subscribe(r -> {
+		Observable<Place> productObservableOther = observer.getPlaceObservableOther();
+		@NonNull
+		Disposable connect2 = productObservableOther.subscribe(r -> {
 			LOGGER.info("received-other: " + r);
 			eventListOther.add(r);
 		});
 		
-		@NonNull
-		Disposable connect2 = productObservableOther.connect();
-		
-		Thread.sleep(60000);
+		LOGGER.warn("waiting 30_0000");
+		Thread.sleep(30_000);
 		connect2.dispose();
+		
+		LOGGER.warn("waiting 10_0000");
+		Thread.sleep(10_000);
 		
 		System.out.println("eventList     : " + eventList);
 		System.out.println("eventListOther: " + eventListOther);
