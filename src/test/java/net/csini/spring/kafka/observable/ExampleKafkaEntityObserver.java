@@ -16,6 +16,12 @@ public class ExampleKafkaEntityObserver {
 	
 	@KafkaEntityObservable(entity = Place.class, autostart = false)
 	private Observable<Place> placeObservableOther;
+	
+	@KafkaEntityObservable(entity = Place.class)
+	private Observable<Place> placeObservableThird;
+	
+	@KafkaEntityObservable(entity = Place.class, autostart = false)
+	private Observable<Place> placeObservableBefore;
 
 }
 	
