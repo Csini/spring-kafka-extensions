@@ -16,7 +16,7 @@
      
      <logger name="org.apache.kafka.streams" level="warn" />
      
-      <logger name="org.apache.kafka" level="info" />
+      <logger name="org.apache.kafka" level="debug" />
 
 	<root level="warn">
 		<appender-ref ref="STDOUT" />

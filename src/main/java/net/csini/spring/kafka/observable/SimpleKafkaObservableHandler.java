@@ -14,20 +14,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteConsumerGroupsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.KafkaFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
@@ -60,18 +60,27 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 
 	private Class<K> clazzKey;
 
-	KafkaConsumer<K, T> kafkaConsumer;
+//	KafkaConsumer<K, T> kafkaConsumer;
 
 	private AtomicBoolean stopped = new AtomicBoolean(false);
 
-	ExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+	private AtomicBoolean started = new AtomicBoolean(false);
+
+	private boolean autostart;
+
+	ExecutorService executor;
+//	ExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
 //	ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
+	private String beanName;
 
 	SimpleKafkaObservableHandler(KafkaEntityObservable kafkaEntityObservable, String beanName)
 			throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
 		this.groupid = /* getTopicName() + "-observer-" + */ beanName;
+
+		this.autostart = kafkaEntityObservable.autostart();
 
 		boolean foundKey = false;
 
@@ -95,7 +104,16 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 		}
 
 		subscribers = new AtomicReference<>(EMPTY);
-		start();
+
+		this.beanName = beanName;
+
+		BasicThreadFactory factory = new BasicThreadFactory.Builder().namingPattern(beanName + "Thread-%d")
+				.priority(Thread.MAX_PRIORITY).build();
+		executor = Executors.newFixedThreadPool(3, factory);
+
+		if (this.autostart) {
+			start();
+		}
 	}
 
 	public Class<T> getClazz() {
@@ -106,10 +124,10 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 		return this.clazzKey;
 	}
 
-	@Bean
-	public KafkaConsumer<K, T> consumer() {
-		return this.kafkaConsumer;
-	}
+//	@Bean
+//	public KafkaConsumer<K, T> consumer() {
+//		return this.kafkaConsumer;
+//	}
 
 	private String getTopicName() {
 		Topic topic = extractTopic();
@@ -126,7 +144,8 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 //	@Override
 //	public void subscribe(@NonNull ObservableEmitter<@NonNull T> emitter) throws Throwable {
 //
-//		LOGGER.warn("subscribed: " + emitter);
+//	
+//	LOGGER.warn("subscribed: " + emitter);
 //
 //		this.kafkaConsumer.subscribe(List.of(getTopicName()));
 //
@@ -147,17 +166,25 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 
 	public void start() {
 
-		LOGGER.warn("starting...");
+		if (this.started.get()) {
+			LOGGER.warn("already started...");
+			return;
+		}
 
-		executor.submit(() -> {
+		LOGGER.warn("starting " + this.beanName + "...");
+
+		Thread pollingThread = new Thread(() -> {
 
 			Map<String, Object> properties = new HashMap<>();
 			properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 //			properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
 //			properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
 			// TODO
-//			properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.name().toLowerCase());
+			// properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+			// OffsetResetStrategy.LATEST.name().toLowerCase());
 			properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
+
+			properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
 //			Serde<T> serde = Serdes.serdeFrom(getClazz());
 
@@ -168,40 +195,61 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 			valueDeserializer.addTrustedPackages(getClazz().getPackageName());
 			keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
 
-			this.kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
+			KafkaConsumer<K, T> kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer, valueDeserializer);
 
-//			kafkaConsumer.seekToEnd(Collections.emptyList());
-//			kafkaConsumer.commitSync();
+			kafkaConsumer.subscribe(List.of(getTopicName()));
 
-			this.kafkaConsumer.subscribe(List.of(getTopicName()));
+			kafkaConsumer.poll(Duration.ofSeconds(10L));
+
+			kafkaConsumer.seekToEnd(Collections.emptyList());
+			kafkaConsumer.commitSync();
+
+			// wait until kafkaConsumer is ready and offset setted
+			while (kafkaConsumer.committed(kafkaConsumer.assignment()).isEmpty()) {
+				System.out.println("...");
+			}
+			;
+
 			while (!stopped.get()) {
+				this.started.set(true);
 				if (subscribers.get().length > 0) {
-					pollIteration();
+					LOGGER.warn("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
+					ConsumerRecords<K, T> poll = kafkaConsumer.poll(Duration.ofSeconds(10L));
+
+					LOGGER.warn("count: " + poll.count());
+
+					poll.forEach(r -> {
+						// TODO
+						LOGGER.warn("polled:" + r);
+
+						for (KafkaEntityObservableDisposable<T, K> pd : subscribers.get()) {
+							pd.onNext(r.value());
+						}
+					});
+					kafkaConsumer.commitSync();
 				}
 			}
-
 			kafkaConsumer.unsubscribe();
 			kafkaConsumer.close();
+			this.started.set(false);
 		});
+		pollingThread.setName(beanName + "Thread");
+		pollingThread.start();
+
+		LOGGER.warn("waiting the consumer to start in " + beanName + "Thread...");
+		while (!this.started.get()) {
+			// LOGGER.warn(".");
+		}
 	}
 
 	public void stop() {
 		this.stopped.set(true);
 	}
 
-	private void pollIteration() {
-		poll().forEach(r -> {
-			for (KafkaEntityObservableDisposable<T, K> pd : subscribers.get()) {
-				pd.onNext(r.value());
-			}
-		});
-
-	}
-
-	private ConsumerRecords<K, T> poll() {
-		LOGGER.warn("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
-		return this.kafkaConsumer.poll(Duration.ofSeconds(10L));
-	}
+//	private ConsumerRecords<K, T> poll() {
+//		LOGGER.warn("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
+//		return this.kafkaConsumer.poll(Duration.ofSeconds(10L));
+//	}
 
 //	2024-07-10 | 09:41:35.395 |                                                             pool-2-thread-1 | DEBUG |              o.a.k.clients.NetworkClient | [Consumer clientId=consumer-testgroupid-1, groupId=testgroupid] Sending metadata request MetadataRequestData(topics=[MetadataRequestTopic(topicId=AAAAAAAAAAAAAAAAAAAAAA, name='PRODUCT')], allowAutoTopicCreation=true, includeClusterAuthorizedOperations=false, includeTopicAuthorizedOperations=false) to node localhost:9092 (id: 1 rack: null)
 //	2024-07-10 | 09:41:35.395 |                                                             pool-2-thread-1 | DEBUG |              o.a.k.clients.NetworkClient | [Consumer clientId=consumer-testgroupid-1, groupId=testgroupid] Sending METADATA request with header RequestHeader(apiKey=METADATA, apiVersion=12, clientId=consumer-testgroupid-1, correlationId=66, headerVersion=2) and timeout 30000 to node 1: MetadataRequestData(topics=[MetadataRequestTopic(topicId=AAAAAAAAAAAAAAAAAAAAAA, name='PRODUCT')], allowAutoTopicCreation=true, includeClusterAuthorizedOperations=false, includeTopicAuthorizedOperations=false)
@@ -225,7 +273,7 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 	@Override
 	public void destroy() throws Exception {
 
-		LOGGER.warn("*** Starting AdminClient to delete a Consumer Group ***");
+		LOGGER.warn("*** Starting AdminClient to delete a Consumer Group ***" + this.beanName);
 
 		stop();
 		executor.shutdown();
@@ -291,6 +339,10 @@ public class SimpleKafkaObservableHandler<T, K> extends Observable<T> implements
 			} else {
 				t.onComplete();
 			}
+		}
+
+		if (!this.autostart) {
+			start();
 		}
 	}
 

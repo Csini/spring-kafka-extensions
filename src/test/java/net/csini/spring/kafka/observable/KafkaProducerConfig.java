@@ -16,6 +16,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import net.csini.spring.kafka.entity.Place;
+import net.csini.spring.kafka.mapping.JsonKeySerializer;
 
 @Configuration
 public class KafkaProducerConfig {
@@ -34,7 +35,7 @@ public class KafkaProducerConfig {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
-        return new DefaultKafkaProducerFactory<>(config, new JsonSerializer<String>(), new JsonSerializer<Place>());
+        return new DefaultKafkaProducerFactory<>(config, new JsonKeySerializer<String>(), new JsonSerializer<Place>());
     }
 
     @Bean

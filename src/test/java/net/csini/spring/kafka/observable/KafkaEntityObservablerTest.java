@@ -57,8 +57,8 @@ public class KafkaEntityObservablerTest {
 		LOGGER.warn("sentCounter.await()");
 //		Thread.sleep(20000);
 		sentCounter.await();
-		LOGGER.warn("waiting 20_0000");
-		Thread.sleep(20_000);
+		LOGGER.warn("waiting 40_0000");
+		Thread.sleep(40_000);
 		connect1.dispose();
 		
 		Observable<Place> productObservableOther = observer.getPlaceObservableOther();
@@ -67,7 +67,7 @@ public class KafkaEntityObservablerTest {
 			LOGGER.info("received-other: " + r);
 			eventListOther.add(r);
 		});
-		
+
 		LOGGER.warn("waiting 30_0000");
 		Thread.sleep(30_000);
 		connect2.dispose();
@@ -84,7 +84,7 @@ public class KafkaEntityObservablerTest {
 
 	void publishMessages(CountDownLatch sentCounter, int i) throws Exception {
 
-		LOGGER.debug("publishMessages");
+		LOGGER.warn("publishMessages");
 
 		Place p1 = new Place("p"+i+"id");
 		ProducerRecord<String, Place> p1Record = new ProducerRecord<>(TOPIC, p1.id(), p1);

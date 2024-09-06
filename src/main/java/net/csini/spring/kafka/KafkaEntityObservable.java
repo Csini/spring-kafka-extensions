@@ -10,6 +10,8 @@ import java.lang.annotation.Target;
 public @interface KafkaEntityObservable {
 
 	Class entity();
+	
+	boolean autostart() default true;
 
 //	  consumer:
 //	      group-id: siTestGroup
