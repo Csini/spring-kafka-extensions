@@ -29,17 +29,16 @@ public class KafkaProducerConfig {
 	@Value(value = "${spring.kafka.bootstrap-servers:localhost:9092}")
 	private List<String> bootstrapServers = new ArrayList<>(Collections.singletonList("localhost:9092"));
 
+	@Bean
+	public ProducerFactory<String, Place> producerFactory() {
+		Map<String, Object> config = new HashMap<>();
+		config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 
-    @Bean
-    public ProducerFactory<String, Place> producerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+		return new DefaultKafkaProducerFactory<>(config, new JsonKeySerializer<String>(), new JsonSerializer<Place>());
+	}
 
-        return new DefaultKafkaProducerFactory<>(config, new JsonKeySerializer<String>(), new JsonSerializer<Place>());
-    }
-
-    @Bean
-    public KafkaTemplate<String, Place> kafkaProducer() {
-        return new KafkaTemplate<>(producerFactory());
-    }
+	@Bean
+	public KafkaTemplate<String, Place> kafkaProducer() {
+		return new KafkaTemplate<>(producerFactory());
+	}
 }

@@ -19,7 +19,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
-import net.csini.spring.kafka.observable.SimpleKafkaObservable.KafkaEntityObservableDisposable;
+import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
 
 public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
@@ -58,21 +58,12 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
 		Map<String, Object> properties = new HashMap<>();
 		properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-//		properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-//		properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class.getName());
-		// TODO
-		// properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-		// OffsetResetStrategy.LATEST.name().toLowerCase());
 		properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupid);
 
 		properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-
-//		Serde<T> serde = Serdes.serdeFrom(getClazz());
-
-//		properties.put(JsonDeserializer.TRUSTED_PACKAGES, getClazz().getPackageName());
 		JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(getClazz());
 		JsonKeyDeserializer<K> keyDeserializer = new JsonKeyDeserializer<>(getClazzKey());
-		// TODO
+
 		valueDeserializer.addTrustedPackages(getClazz().getPackageName());
 		keyDeserializer.addTrustedPackages(getClazzKey().getPackageName());
 

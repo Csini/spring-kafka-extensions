@@ -42,11 +42,11 @@ import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
-import net.csini.spring.kafka.observable.SimpleKafkaObservable.KafkaEntityObservableDisposable;
+import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
 
-public class SimpleKafkaObservable<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
+public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaObservable.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaEntityObservable.class);
 
 	/**
 	 * Comma-delimited list of host:port pairs to use for establishing the initial
@@ -68,7 +68,7 @@ public class SimpleKafkaObservable<T, K> extends Observable<T> implements Dispos
 
 	private String beanName;
 
-	SimpleKafkaObservable(KafkaEntityObservable kafkaEntityObservable, String beanName) throws KafkaEntityException {
+	SimpleKafkaEntityObservable(KafkaEntityObservable kafkaEntityObservable, String beanName) throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
 		this.groupid = /* getTopicName() + "-observer-" + */ beanName;
 
@@ -185,9 +185,9 @@ public class SimpleKafkaObservable<T, K> extends Observable<T> implements Dispos
 	 */
 	@CheckReturnValue
 	@NonNull
-	public static <T, K> SimpleKafkaObservable<T, K> create(KafkaEntityObservable kafkaEntityObservable,
+	public static <T, K> SimpleKafkaEntityObservable<T, K> create(KafkaEntityObservable kafkaEntityObservable,
 			String beanName) throws KafkaEntityException {
-		return new SimpleKafkaObservable<T, K>(kafkaEntityObservable, beanName);
+		return new SimpleKafkaEntityObservable<T, K>(kafkaEntityObservable, beanName);
 	}
 
 	@Override
@@ -293,7 +293,7 @@ public class SimpleKafkaObservable<T, K> extends Observable<T> implements Dispos
 		/** The actual subscriber. */
 		final Observer<? super T> downstream;
 		/** The subject state. */
-		final SimpleKafkaObservable<T, K> parent;
+		final SimpleKafkaEntityObservable<T, K> parent;
 
 		/**
 		 * Constructs a PublishSubscriber, wraps the actual subscriber and the state.
@@ -301,7 +301,7 @@ public class SimpleKafkaObservable<T, K> extends Observable<T> implements Dispos
 		 * @param actual the actual subscriber
 		 * @param parent the parent PublishProcessor
 		 */
-		KafkaEntityObservableDisposable(Observer<? super T> actual, SimpleKafkaObservable<T, K> parent) {
+		KafkaEntityObservableDisposable(Observer<? super T> actual, SimpleKafkaEntityObservable<T, K> parent) {
 			this.downstream = actual;
 			this.parent = parent;
 		}
