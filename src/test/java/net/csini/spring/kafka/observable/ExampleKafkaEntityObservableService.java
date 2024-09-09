@@ -9,7 +9,7 @@ import net.csini.spring.kafka.entity.Place;
 
 @Service
 @Getter
-public class ExampleKafkaEntityObserver {
+public class ExampleKafkaEntityObservableService {
 
 	@KafkaEntityObservable(entity = Place.class)
 	private Observable<Place> placeObservable;

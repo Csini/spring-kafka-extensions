@@ -32,7 +32,7 @@ import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityProducer;
 import net.csini.spring.kafka.Topic;
-import net.csini.spring.kafka.observable.SimpleKafkaObservableHandler;
+import net.csini.spring.kafka.observable.SimpleKafkaObservable;
 import net.csini.spring.kafka.producer.SimpleKafkaProducer;
 
 @Configuration
@@ -105,7 +105,7 @@ public class KafkaEntityConfig {
 
 					autoCreateTopic(entity);
 
-					Class<? extends SimpleKafkaObservableHandler> creatorClass = SimpleKafkaObservableHandler.class;
+//					Class<? extends SimpleKafkaObservable> creatorClass = SimpleKafkaObservable.class;
 //					Constructor<? extends SimpleKafkaObservableHandler> creatorCtor = creatorClass
 //							.getConstructor(KafkaEntityObservable.class, String.class);
 //					SimpleKafkaObservableHandler<?, ?> handler = creatorCtor.newInstance(kafkaEntityObserverable,
@@ -129,12 +129,12 @@ public class KafkaEntityConfig {
 ////							.doOnComplete(() -> LOGGER.warn("oncomplete"))
 //							.publish();
 
-					Class<SimpleKafkaObservableHandler> clazz = SimpleKafkaObservableHandler.class;
+					Class<SimpleKafkaObservable> clazz = SimpleKafkaObservable.class;
 					Method method = clazz.getMethod("create", KafkaEntityObservable.class, String.class);
 
 					String newBeanName = bean.getClass().getName() + "#" + field.getName();
 					Object obj = method.invoke(null, kafkaEntityObserverable, newBeanName);
-					SimpleKafkaObservableHandler<?, ?> newInstance = (SimpleKafkaObservableHandler<?, ?>) obj;
+					SimpleKafkaObservable<?, ?> newInstance = (SimpleKafkaObservable<?, ?>) obj;
 					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
 							.getAutowireCapableBeanFactory();
 					registry.registerDisposableBean(newBeanName, newInstance);
