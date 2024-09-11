@@ -36,9 +36,4 @@ public class ExampleKafkaEntityObserverService {
 		count++;
 	}
 
-
-	public void assertCount() {
-		Assertions.assertEquals(input.size(), count);
-	}
-
 }

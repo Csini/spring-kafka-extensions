@@ -81,7 +81,7 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
 			LocalDateTime then = LocalDateTime.now();
 			while (kafkaConsumer.committed(kafkaConsumer.assignment()).isEmpty()) {
-				System.out.print("...");
+//				System.out.print("...");
 				if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
 //				break;
 					// TODO

@@ -13,12 +13,4 @@ public @interface KafkaEntityObservable {
 	
 	boolean autostart() default true;
 
-//	  consumer:
-//	      group-id: siTestGroup
-//	      auto-offset-reset: earliest
-//	      enable-auto-commit: false
-//	      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-//	      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-
-//	int batchSize() default 0;
 }

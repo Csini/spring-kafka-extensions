@@ -1,16 +1,3 @@
-/*
- * Copyright (c) 2016-present, RxJava Contributors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
- * compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See
- * the License for the specific language governing permissions and limitations under the License.
- */
-
 package net.csini.spring.kafka.observer;
 
 import java.lang.reflect.Field;
@@ -43,12 +30,11 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.internal.util.ExceptionHelper;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
-import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
+import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
-import net.csini.spring.kafka.producer.SimpleKafkaProducer;
 
 public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, DisposableBean, InitializingBean {
 
@@ -86,8 +72,8 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 	 */
 	@CheckReturnValue
 	@NonNull
-	public static <T, K> SimpleKafkaEntityObserver<T, K> create(KafkaEntityObserver kafkaEntityObserver, String beanName)
-			throws InterruptedException, ExecutionException, KafkaEntityException {
+	public static <T, K> SimpleKafkaEntityObserver<T, K> create(KafkaEntityObserver kafkaEntityObserver,
+			String beanName) throws InterruptedException, ExecutionException, KafkaEntityException {
 		return new SimpleKafkaEntityObserver<>(kafkaEntityObserver, beanName);
 	}
 
@@ -103,26 +89,16 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		this.clientid = beanName;
 		this.topic = getTopicName();
 
-		boolean foundKeyAnnotation = false;
+		// presents of @Key is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
 			LOGGER.debug("    field  -> " + field.getName());
 			if (field.isAnnotationPresent(Key.class)) {
-
-				Key key = field.getAnnotation(Key.class);
-
-				try {
-					field.setAccessible(true);
-					this.keyField = field;
-					foundKeyAnnotation = true;
-				} catch (IllegalArgumentException e) {
-					throw new KafkaEntityException(e);
-				}
+				field.setAccessible(true);
+				this.keyField = field;
+				break;
 			}
 		}
 
-		if (!foundKeyAnnotation) {
-			throw new KafkaEntityException("@Key is mandatory in @KafkaEntity");
-		}
 		Map<String, Object> configProps = new HashMap<>();
 		configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonKeySerializer.class);
@@ -169,7 +145,6 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		return getClazz().getAnnotation(Topic.class);
 	}
 
-	// TODO place in constructor to find the field
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
 	}

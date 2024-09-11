@@ -1,6 +1,5 @@
 package net.csini.spring.kafka.config;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -18,24 +17,24 @@ import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.SingletonBeanRegistry;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
 import jakarta.annotation.PostConstruct;
 import net.csini.spring.kafka.KafkaEntity;
-import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityObserver;
-import net.csini.spring.kafka.KafkaEntityProducer;
+import net.csini.spring.kafka.KafkaEntitySubject;
+import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
+import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable;
 import net.csini.spring.kafka.observer.SimpleKafkaEntityObserver;
-import net.csini.spring.kafka.producer.SimpleKafkaProducer;
+import net.csini.spring.kafka.subject.SimpleKafkaEntitySubject;
 
 @Configuration
 public class KafkaEntityConfig {
@@ -48,13 +47,10 @@ public class KafkaEntityConfig {
 	@Autowired
 	private ApplicationContext applicationContext;
 
-	@PostConstruct
-	public String getAllBeans() throws NoSuchMethodException, SecurityException, InstantiationException,
-			IllegalAccessException, IllegalArgumentException, InvocationTargetException, KafkaEntityException,
-			InterruptedException, ExecutionException {
+	private List<KafkaEntityException> errors = new ArrayList<>();
 
-		ConfigurableApplicationContext configContext = (ConfigurableApplicationContext) applicationContext;
-		SingletonBeanRegistry beanRegistry = configContext.getBeanFactory();
+	@PostConstruct
+	public String getAllBeans() {
 
 		StringBuilder result = new StringBuilder();
 		String[] allBeans = applicationContext.getBeanDefinitionNames();
@@ -69,79 +65,26 @@ public class KafkaEntityConfig {
 			LOGGER.trace(" bean -> " + bean.getClass());
 			for (Field field : bean.getClass().getDeclaredFields()) {
 				LOGGER.trace("    field  -> " + field.getName());
-				if (field.isAnnotationPresent(KafkaEntityProducer.class)) {
+				try {
+					if (field.isAnnotationPresent(KafkaEntityObservable.class)) {
 
-					KafkaEntityProducer kafkaEntityProducer = field.getAnnotation(KafkaEntityProducer.class);
-					LOGGER.debug("registering " + field.getName() + " in " + bean.getClass());
+						registerKafkaEntityObservableBean(bean, field);
 
-					Class entity = kafkaEntityProducer.entity();
+					} else if (field.isAnnotationPresent(KafkaEntityObserver.class)) {
 
-					if (!entity.isAnnotationPresent(KafkaEntity.class)) {
-						throw new KafkaEntityException(entity.getName() + " must be a @KafkaEntity");
+						registerKafkaEntityObserverBean(bean, field);
+
+					} else if (field.isAnnotationPresent(KafkaEntitySubject.class)) {
+
+						registerKafkaEntitySubjectBean(bean, field);
 					}
-
-					autoCreateTopic(entity);
-
-					Class<? extends SimpleKafkaProducer> creatorClass = SimpleKafkaProducer.class;
-					Constructor<? extends SimpleKafkaProducer> creatorCtor = creatorClass
-							.getConstructor(KafkaEntityProducer.class);
-					SimpleKafkaProducer<?, ?> newInstance = creatorCtor.newInstance(kafkaEntityProducer);
-//					beanRegistry.registerSingleton(bean.getClass().getName() + "." + field.getName(), newInstance);
-
-					applicationContext.getAutowireCapableBeanFactory().autowireBean(newInstance);
-
-					newInstance.afterPropertiesSet();
-
-					field.setAccessible(true);
-					field.set(bean, newInstance);
-				} else if (field.isAnnotationPresent(KafkaEntityObservable.class)) {
-
-					KafkaEntityObservable kafkaEntityObservable = field.getAnnotation(KafkaEntityObservable.class);
-					LOGGER.debug("registering " + field.getName() + " in " + bean.getClass() + " as Observable");
-
-					Class entity = kafkaEntityObservable.entity();
-
-					if (!entity.isAnnotationPresent(KafkaEntity.class)) {
-						throw new KafkaEntityException(entity.getName() + " must be a @KafkaEntity");
-					}
-
-					autoCreateTopic(entity);
-
-					Class<SimpleKafkaEntityObservable> clazz = SimpleKafkaEntityObservable.class;
-					Method method = clazz.getMethod("create", KafkaEntityObservable.class, String.class);
-
-					String newBeanName = bean.getClass().getName() + "#" + field.getName();
-					Object obj = method.invoke(null, kafkaEntityObservable, newBeanName);
-					SimpleKafkaEntityObservable<?, ?> newInstance = (SimpleKafkaEntityObservable<?, ?>) obj;
-					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
-							.getAutowireCapableBeanFactory();
-					registry.registerDisposableBean(newBeanName, newInstance);
-					field.setAccessible(true);
-					field.set(bean, newInstance);
-				} else if (field.isAnnotationPresent(KafkaEntityObserver.class)) {
-
-					KafkaEntityObserver kafkaEntityObserver = field.getAnnotation(KafkaEntityObserver.class);
-					LOGGER.debug("registering " + field.getName() + " in " + bean.getClass() + " as Observer");
-
-					Class entity = kafkaEntityObserver.entity();
-
-					if (!entity.isAnnotationPresent(KafkaEntity.class)) {
-						throw new KafkaEntityException(entity.getName() + " must be a @KafkaEntity");
-					}
-
-					autoCreateTopic(entity);
-
-					Class<SimpleKafkaEntityObserver> clazz = SimpleKafkaEntityObserver.class;
-					Method method = clazz.getMethod("create", KafkaEntityObserver.class, String.class);
-
-					String newBeanName = bean.getClass().getName() + "#" + field.getName();
-					Object obj = method.invoke(null, kafkaEntityObserver, newBeanName);
-					SimpleKafkaEntityObserver<?, ?> newInstance = (SimpleKafkaEntityObserver<?, ?>) obj;
-					DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
-							.getAutowireCapableBeanFactory();
-					registry.registerDisposableBean(newBeanName, newInstance);
-					field.setAccessible(true);
-					field.set(bean, newInstance);
+				} catch (KafkaEntityException e) {
+					LOGGER.error("Error by registering spring-kafka-extension Bean", e);
+					errors.add(e);
+				} catch (Exception e) {
+					KafkaEntityException kafkaEx = new KafkaEntityException(beanName, e);
+					LOGGER.error("Error by registering spring-kafka-extension Bean", kafkaEx);
+					errors.add(kafkaEx);
 				}
 			}
 		}
@@ -151,8 +94,110 @@ public class KafkaEntityConfig {
 		return string;
 	}
 
-	private String getTopicName(Class entity) {
+	private void registerKafkaEntityObservableBean(Object bean, Field field)
+			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+		KafkaEntityObservable kafkaEntityObservable = field.getAnnotation(KafkaEntityObservable.class);
+
+		Class entity = kafkaEntityObservable.entity();
+
+		String newBeanName = bean.getClass().getName() + "#" + field.getName();
+		LOGGER.debug("registering " + newBeanName + " as Observable");
+		handleKafkaEntity(newBeanName, entity);
+
+		Class<SimpleKafkaEntityObservable> clazz = SimpleKafkaEntityObservable.class;
+		Method method = clazz.getMethod("create", KafkaEntityObservable.class, String.class);
+
+		Object obj = method.invoke(null, kafkaEntityObservable, newBeanName);
+		SimpleKafkaEntityObservable<?, ?> newInstance = (SimpleKafkaEntityObservable<?, ?>) obj;
+
+		registerBean(bean, field, newBeanName, newInstance);
+	}
+
+	private void registerKafkaEntityObserverBean(Object bean, Field field)
+			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+		KafkaEntityObserver kafkaEntityObserver = field.getAnnotation(KafkaEntityObserver.class);
+
+		Class entity = kafkaEntityObserver.entity();
+
+		String newBeanName = bean.getClass().getName() + "#" + field.getName();
+		LOGGER.debug("registering " + newBeanName + " as Observer");
+		handleKafkaEntity(newBeanName, entity);
+
+		Class<SimpleKafkaEntityObserver> clazz = SimpleKafkaEntityObserver.class;
+		Method method = clazz.getMethod("create", KafkaEntityObserver.class, String.class);
+
+		Object obj = method.invoke(null, kafkaEntityObserver, newBeanName);
+		SimpleKafkaEntityObserver<?, ?> newInstance = (SimpleKafkaEntityObserver<?, ?>) obj;
+
+		registerBean(bean, field, newBeanName, newInstance);
+	}
+
+	private void registerKafkaEntitySubjectBean(Object bean, Field field)
+			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+		KafkaEntitySubject kafkaEntitySubject = field.getAnnotation(KafkaEntitySubject.class);
+
+		Class entity = kafkaEntitySubject.entity();
+
+		String newBeanName = bean.getClass().getName() + "#" + field.getName();
+		LOGGER.debug("registering " + newBeanName +  " as Subject");
+		handleKafkaEntity(newBeanName, entity);
+
+		Class<SimpleKafkaEntitySubject> clazz = SimpleKafkaEntitySubject.class;
+		Method method = clazz.getMethod("create", KafkaEntitySubject.class, String.class);
+
+		Object obj = method.invoke(null, kafkaEntitySubject, newBeanName);
+		SimpleKafkaEntitySubject<?, ?> newInstance = (SimpleKafkaEntitySubject<?, ?>) obj;
+
+		registerBean(bean, field, newBeanName, newInstance);
+	}
+
+	private void registerBean(Object bean, Field field, String newBeanName, DisposableBean newInstance)
+			throws IllegalAccessException {
+		DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
+				.getAutowireCapableBeanFactory();
+		registry.registerDisposableBean(newBeanName, newInstance);
+		field.setAccessible(true);
+		field.set(bean, newInstance);
+	}
+
+	private void handleKafkaEntity(String beanName, Class entity) throws KafkaEntityException {
+		if (!entity.isAnnotationPresent(KafkaEntity.class)) {
+			throw new KafkaEntityException(beanName, entity.getName() + " must be a @KafkaEntity");
+		}
+
+		boolean foundKeyAnnotation = false;
+		for (Field field : entity.getDeclaredFields()) {
+			LOGGER.trace("    field  -> " + field.getName());
+			if (field.isAnnotationPresent(Key.class)) {
+				foundKeyAnnotation = true;
+				break;
+			}
+		}
+
+		if (!foundKeyAnnotation) {
+			throw new KafkaEntityException(beanName, entity.getName() + " @Key is mandatory in @KafkaEntity");
+		}
+
+		boolean autoCreateTopic = true;
 		Topic topic = extractTopic(entity);
+		if (topic != null) {
+			autoCreateTopic = topic.autoCreate();
+		}
+		if (autoCreateTopic) {
+			try {
+				autoCreateTopic(entity, topic);
+			} catch (InterruptedException | ExecutionException e) {
+				throw new KafkaEntityException(beanName, e);
+			}
+		}
+	}
+
+//	private String getTopicName(Class entity) {
+//		Topic topic = extractTopic(entity);
+//		return getTopicName(entity, topic);
+//	}
+
+	private String getTopicName(Class entity, Topic topic) {
 		if (topic != null) {
 			return topic.name();
 		}
@@ -163,8 +208,7 @@ public class KafkaEntityConfig {
 		return (Topic) entity.getAnnotation(Topic.class);
 	}
 
-	private void autoCreateTopic(Class entity) throws InterruptedException, ExecutionException {
-		String topic = getTopicName(entity);
+	private void autoCreateTopic(Class entity, Topic topic) throws InterruptedException, ExecutionException {
 		Map<String, Object> conf = new HashMap<>();
 		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
@@ -172,16 +216,35 @@ public class KafkaEntityConfig {
 
 			ListTopicsResult listTopics = admin.listTopics();
 			Set<String> names = listTopics.names().get();
-			boolean contains = names.contains(topic);
+			LOGGER.debug("names: " + names);
+			String topicName = getTopicName(entity, topic);
+			boolean contains = names.contains(topicName);
 			if (!contains) {
-				List<NewTopic> topicList = new ArrayList<NewTopic>();
 				Map<String, String> configs = new HashMap<String, String>();
 				int partitions = 1;
-				Short replication = 1;
-				NewTopic newTopic = new NewTopic(topic, partitions, replication).configs(configs);
-				topicList.add(newTopic);
-				admin.createTopics(topicList);
+				Short replication = 0;
+				if (topic != null) {
+					partitions = topic.numPartitions();
+					replication = topic.replicationFactor();
+				}
+				NewTopic newTopic = new NewTopic(topicName, partitions, replication).configs(configs);
+				LOGGER.warn("autocreating " + newTopic);
+				admin.createTopics(List.of(newTopic));
+				
+				LOGGER.warn("waiting 10_0000");
+				Thread.sleep(10_000);
 			}
 		}
 	}
+
+	public List<KafkaEntityException> getErrors() {
+		return Collections.unmodifiableList(errors);
+	}
+
+	public void throwFirstError() throws KafkaEntityException {
+		if (!errors.isEmpty()) {
+			throw errors.get(0);
+		}
+	}
+
 }

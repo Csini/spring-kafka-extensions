@@ -39,6 +39,7 @@ public class KafkaEntityObservablerTest {
 
 	@Test
 	public void test_sendEvent() throws Exception {
+		
 		List<Place> eventList = new ArrayList<>();
 		List<Place> eventListOther = new ArrayList<>();
 		List<Place> eventListBefore = new ArrayList<>();
@@ -113,10 +114,10 @@ public class KafkaEntityObservablerTest {
 		LOGGER.warn("waiting maximum 120_0000");
 		beforeCounter.await(120, TimeUnit.SECONDS);
 
-		System.out.println("eventList      : " + eventList);
-		System.out.println("eventListOther : " + eventListOther);
-		System.out.println("eventListBefore: " + eventListBefore);
-		System.out.println("eventListThird : " + eventListThird);
+		LOGGER.info("eventList      : " + eventList);
+		LOGGER.info("eventListOther : " + eventListOther);
+		LOGGER.info("eventListBefore: " + eventListBefore);
+		LOGGER.info("eventListThird : " + eventListThird);
 		Assertions.assertEquals(sendingFirstCount, eventList.size(), "eventList");
 		Assertions.assertEquals(0, eventListOther.size(), "eventListOther");
 		Assertions.assertEquals(sendingFirstCount + sendingSecondCount, eventListBefore.size(), "eventListBefore");

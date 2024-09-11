@@ -37,10 +37,10 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
-import net.csini.spring.kafka.KafkaEntityException;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.Key;
 import net.csini.spring.kafka.Topic;
+import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
 
@@ -68,45 +68,36 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 	private String beanName;
 
-	SimpleKafkaEntityObservable(KafkaEntityObservable kafkaEntityObservable, String beanName) throws KafkaEntityException {
+	SimpleKafkaEntityObservable(KafkaEntityObservable kafkaEntityObservable, String beanName)
+			throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
 		this.groupid = /* getTopicName() + "-observer-" + */ beanName;
 
 		this.autostart = kafkaEntityObservable.autostart();
 
-		boolean foundKey = false;
-
+		// presents of @Key is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
 			LOGGER.debug("    field  -> " + field.getName());
 			if (field.isAnnotationPresent(Key.class)) {
-
-				Key key = field.getAnnotation(Key.class);
-
-				try {
-					field.setAccessible(true);
-					this.clazzKey = (Class<K>) field.getType();
-				} catch (IllegalArgumentException e) {
-					throw new KafkaEntityException(e);
-				}
-				foundKey = true;
+				field.setAccessible(true);
+				this.clazzKey = (Class<K>) field.getType();
+				break;
 			}
-		}
-		if (!foundKey) {
-			throw new KafkaEntityException("@Key is mandatory in @KafkaEntity");
 		}
 
 		subscribers = new AtomicReference<>(EMPTY);
 
 		this.beanName = beanName;
-		
-		this.pollingRunnable = new KafkaEntityPollingRunnable<T, K>(groupid, clazz, clazzKey, subscribers, bootstrapServers, beanName);
+
+		this.pollingRunnable = new KafkaEntityPollingRunnable<T, K>(groupid, clazz, clazzKey, subscribers,
+				bootstrapServers, beanName);
 
 		if (this.autostart) {
 			start();
 		}
 	}
 
-	public void start() {
+	public void start() throws KafkaEntityException {
 
 		if (this.pollingRunnable.getStarted().get()) {
 			LOGGER.warn("already started...");
@@ -115,8 +106,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 		LOGGER.warn("starting " + this.beanName + "...");
 
-		Thread pollingThread = new Thread(
-				this.pollingRunnable);
+		Thread pollingThread = new Thread(this.pollingRunnable);
 		pollingThread.setName(beanName + "Thread");
 		pollingThread.start();
 
@@ -125,8 +115,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		while (!this.pollingRunnable.getStarted().get()) {
 			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
 //			break;
-				// TODO
-				throw new RuntimeException("KafkaConsumer could not start in 20 sec.");
+				throw new KafkaEntityException(beanName,"KafkaConsumer could not start in 20 sec.");
 			}
 		}
 	}
@@ -210,7 +199,11 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		}
 
 		if (!this.autostart) {
-			start();
+			try {
+				start();
+			} catch (KafkaEntityException e) {
+				t.onError(e);
+			}
 		}
 	}
 
