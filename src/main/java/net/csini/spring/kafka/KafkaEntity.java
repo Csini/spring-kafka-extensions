@@ -10,4 +10,6 @@ import java.lang.annotation.Target;
 public @interface KafkaEntity {
 
 //	readonly true/false
+	
+	String topicName() default "";
 }

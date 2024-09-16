@@ -11,10 +11,8 @@ public @interface Topic {
 
 	String name();
 	
-	boolean autoCreate() default true;
-	
 	int numPartitions() default 1;
 	
-	short replicationFactor() default 0;
+	short replicationFactor() default 1;
 	
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
@@ -139,7 +140,7 @@ public class KafkaEntityConfig {
 		Class entity = kafkaEntitySubject.entity();
 
 		String newBeanName = bean.getClass().getName() + "#" + field.getName();
-		LOGGER.debug("registering " + newBeanName +  " as Subject");
+		LOGGER.debug("registering " + newBeanName + " as Subject");
 		handleKafkaEntity(newBeanName, entity);
 
 		Class<SimpleKafkaEntitySubject> clazz = SimpleKafkaEntitySubject.class;
@@ -178,17 +179,11 @@ public class KafkaEntityConfig {
 			throw new KafkaEntityException(beanName, entity.getName() + " @Key is mandatory in @KafkaEntity");
 		}
 
-		boolean autoCreateTopic = true;
 		Topic topic = extractTopic(entity);
-		if (topic != null) {
-			autoCreateTopic = topic.autoCreate();
-		}
-		if (autoCreateTopic) {
-			try {
-				autoCreateTopic(entity, topic);
-			} catch (InterruptedException | ExecutionException e) {
-				throw new KafkaEntityException(beanName, e);
-			}
+		try {
+			checkTopic(entity, topic);
+		} catch (InterruptedException | ExecutionException e) {
+			throw new KafkaEntityException(beanName, e);
 		}
 	}
 
@@ -208,7 +203,7 @@ public class KafkaEntityConfig {
 		return (Topic) entity.getAnnotation(Topic.class);
 	}
 
-	private void autoCreateTopic(Class entity, Topic topic) throws InterruptedException, ExecutionException {
+	private void checkTopic(Class entity, Topic topic) throws InterruptedException, ExecutionException, KafkaEntityException {
 		Map<String, Object> conf = new HashMap<>();
 		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
@@ -220,19 +215,29 @@ public class KafkaEntityConfig {
 			String topicName = getTopicName(entity, topic);
 			boolean contains = names.contains(topicName);
 			if (!contains) {
-				Map<String, String> configs = new HashMap<String, String>();
-				int partitions = 1;
-				Short replication = 0;
-				if (topic != null) {
-					partitions = topic.numPartitions();
-					replication = topic.replicationFactor();
-				}
-				NewTopic newTopic = new NewTopic(topicName, partitions, replication).configs(configs);
-				LOGGER.warn("autocreating " + newTopic);
-				admin.createTopics(List.of(newTopic));
 				
-				LOGGER.warn("waiting 10_0000");
-				Thread.sleep(10_000);
+				throw new KafkaEntityException(topicName, "Topic " + topicName + " does not exist in " + bootstrapServers);
+				
+//				Map<String, String> configs = new HashMap<String, String>();
+//				int partitions = 1;
+//				Short replication = 1;
+//				if (topic != null) {
+//					partitions = topic.numPartitions();
+//					replication = topic.replicationFactor();
+//				}
+//				NewTopic newTopic = new NewTopic(topicName, partitions, replication).configs(configs);
+//				LOGGER.warn("autocreating " + newTopic);
+//				CreateTopicsResult topicsResult = admin.createTopics(List.of(newTopic));
+//
+//				topicsResult.config(topicName).get();
+//				
+//				admin.describeTopics(List.of(topicName)).allTopicNames().get().get(topicName).partitions()
+//						.forEach(p -> {
+//							p.replicas().size();
+//						});
+//
+////				LOGGER.warn("waiting 10_0000");
+////				Thread.sleep(10_000);
 			}
 		}
 	}
