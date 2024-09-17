@@ -32,9 +32,9 @@ import io.reactivex.rxjava3.internal.util.ExceptionHelper;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntitySubject;
 import net.csini.spring.kafka.Key;
-import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
+import net.csini.spring.kafka.util.KafkaEntityUtil;
 
 public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implements DisposableBean, InitializingBean {
 
@@ -100,7 +100,7 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 
 		this.clazz = kafkaEntitySubject.entity();
 		this.clientid = beanName;
-		this.topic = getTopicName();
+		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
 
 		// presents of @Key is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
@@ -146,18 +146,6 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 //		return this.clazzKey;
 //	}
 
-	private String getTopicName() {
-		Topic topic = extractTopic();
-		if (topic != null) {
-			return topic.name();
-		}
-		return getClazz().getName();
-	}
-
-	private Topic extractTopic() {
-		return getClazz().getAnnotation(Topic.class);
-	}
-
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
 	}
@@ -170,7 +158,7 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 			d.dispose();
 		}
 
-		String topic = getTopicName();
+//		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
 		this.kafkaProducer.beginTransaction();
 	}

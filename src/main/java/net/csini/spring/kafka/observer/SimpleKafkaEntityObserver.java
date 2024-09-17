@@ -32,9 +32,9 @@ import io.reactivex.rxjava3.internal.util.ExceptionHelper;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.Key;
-import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
+import net.csini.spring.kafka.util.KafkaEntityUtil;
 
 public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, DisposableBean, InitializingBean {
 
@@ -87,7 +87,7 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 			throws InterruptedException, ExecutionException, KafkaEntityException {
 		this.clazz = kafkaEntityObserver.entity();
 		this.clientid = beanName;
-		this.topic = getTopicName();
+		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
 
 		// presents of @Key is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
@@ -133,17 +133,6 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 //		return this.clazzKey;
 //	}
 
-	private String getTopicName() {
-		Topic topic = extractTopic();
-		if (topic != null) {
-			return topic.name();
-		}
-		return getClazz().getName();
-	}
-
-	private Topic extractTopic() {
-		return getClazz().getAnnotation(Topic.class);
-	}
 
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
@@ -163,7 +152,7 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 	@Override
 	public void onSubscribe(Disposable d) {
 		LOGGER.info("sending events");
-		String topic = getTopicName();
+//		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
 		this.kafkaProducer.beginTransaction();
 	}

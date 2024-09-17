@@ -11,5 +11,5 @@ public @interface KafkaEntity {
 
 //	readonly true/false
 	
-	String topicName() default "";
+	String customTopicName() default "";
 }

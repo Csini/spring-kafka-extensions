@@ -14,9 +14,14 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.City;
+import net.csini.spring.kafka.entity.util.TopicUtil;
 
-@SpringBootTest(classes = { SpringKafkaEntityObserverTestApplication.class, KafkaEntityConfig.class,
-		KafkaTemplateConfig.class, ExampleKafkaEntityObserverService.class })
+@SpringBootTest(classes = { TopicUtil.class, SpringKafkaEntityObserverTestConfiguration.class,
+		SpringKafkaEntityObserverTestApplication.class, KafkaEntityConfig.class, KafkaTemplateConfig.class,
+		ExampleKafkaEntityObserverService.class })
+//@TestPropertySource("/application.yml")
+//@EmbeddedKafka(partitions = 1, bootstrapServersProperty = "spring.kafka.bootstrap-servers", brokerProperties = {
+//		"log.dir=target/kafka-log", "auto.create.topics.enable=${kafka.broker.topics-enable:true}" })
 public class KafkaEntityObserverTest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObserverTest.class);
@@ -28,6 +33,7 @@ public class KafkaEntityObserverTest {
 
 	@Test
 	public void test_sendCity() throws Exception {
+
 		List<City> eventList = obs.getInput();
 
 		Observer<City> productObservable = obs.getCityObserver();

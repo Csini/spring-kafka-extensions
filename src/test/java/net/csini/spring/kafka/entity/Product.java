@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import net.csini.spring.kafka.KafkaEntity;
-import net.csini.spring.kafka.Topic;
 
 /**
  * @author csini
@@ -20,8 +19,7 @@ import net.csini.spring.kafka.Topic;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@KafkaEntity
-@Topic(name = "PRODUCT")
+@KafkaEntity(customTopicName = "PRODUCT")
 @EqualsAndHashCode(of = "id")
 public class Product {
 

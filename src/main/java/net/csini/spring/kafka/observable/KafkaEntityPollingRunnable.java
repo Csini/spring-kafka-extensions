@@ -17,9 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
-import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
+import net.csini.spring.kafka.util.KafkaEntityUtil;
 
 public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
@@ -70,7 +70,7 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 		try (KafkaConsumer<K, T> kafkaConsumer = new KafkaConsumer<K, T>(properties, keyDeserializer,
 				valueDeserializer);) {
 
-			kafkaConsumer.subscribe(List.of(getTopicName()));
+			kafkaConsumer.subscribe(List.of(KafkaEntityUtil.getTopicName(getClazz())));
 
 			kafkaConsumer.poll(Duration.ofSeconds(10L));
 
@@ -122,18 +122,6 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
 	public Class<K> getClazzKey() {
 		return this.clazzKey;
-	}
-
-	private String getTopicName() {
-		Topic topic = extractTopic();
-		if (topic != null) {
-			return topic.name();
-		}
-		return getClazz().getName();
-	}
-
-	private Topic extractTopic() {
-		return getClazz().getAnnotation(Topic.class);
 	}
 
 	public AtomicBoolean getStopped() {

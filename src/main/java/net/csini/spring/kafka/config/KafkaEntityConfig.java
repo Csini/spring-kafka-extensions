@@ -13,9 +13,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -31,11 +29,11 @@ import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.KafkaEntitySubject;
 import net.csini.spring.kafka.Key;
-import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable;
 import net.csini.spring.kafka.observer.SimpleKafkaEntityObserver;
 import net.csini.spring.kafka.subject.SimpleKafkaEntitySubject;
+import net.csini.spring.kafka.util.KafkaEntityUtil;
 
 @Configuration
 public class KafkaEntityConfig {
@@ -179,7 +177,7 @@ public class KafkaEntityConfig {
 			throw new KafkaEntityException(beanName, entity.getName() + " @Key is mandatory in @KafkaEntity");
 		}
 
-		Topic topic = extractTopic(entity);
+		KafkaEntity topic = KafkaEntityUtil.extractKafkaEntity(entity);
 		try {
 			checkTopic(entity, topic);
 		} catch (InterruptedException | ExecutionException e) {
@@ -187,23 +185,7 @@ public class KafkaEntityConfig {
 		}
 	}
 
-//	private String getTopicName(Class entity) {
-//		Topic topic = extractTopic(entity);
-//		return getTopicName(entity, topic);
-//	}
-
-	private String getTopicName(Class entity, Topic topic) {
-		if (topic != null) {
-			return topic.name();
-		}
-		return entity.getName();
-	}
-
-	private Topic extractTopic(Class entity) {
-		return (Topic) entity.getAnnotation(Topic.class);
-	}
-
-	private void checkTopic(Class entity, Topic topic) throws InterruptedException, ExecutionException, KafkaEntityException {
+	private void checkTopic(Class entity, KafkaEntity topic) throws InterruptedException, ExecutionException, KafkaEntityException {
 		Map<String, Object> conf = new HashMap<>();
 		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
@@ -212,7 +194,7 @@ public class KafkaEntityConfig {
 			ListTopicsResult listTopics = admin.listTopics();
 			Set<String> names = listTopics.names().get();
 			LOGGER.debug("names: " + names);
-			String topicName = getTopicName(entity, topic);
+			String topicName = KafkaEntityUtil.getTopicName(entity, topic);
 			boolean contains = names.contains(topicName);
 			if (!contains) {
 				

@@ -14,9 +14,10 @@ import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Product;
 import net.csini.spring.kafka.entity.Student;
 import net.csini.spring.kafka.entity.User;
+import net.csini.spring.kafka.entity.util.TopicUtil;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 
-@SpringBootTest(classes = { SpringKafkaEntitySubjectTestApplication.class, KafkaEntityConfig.class,
+@SpringBootTest(classes = { TopicUtil.class, SpringKafkaEntitySubjectTestConfiguration.class, SpringKafkaEntitySubjectTestApplication.class, KafkaEntityConfig.class,
 		OtherKafkaEntitySubjectService.class })
 public class KafkaEntitySubjectTest {
 
@@ -28,10 +29,9 @@ public class KafkaEntitySubjectTest {
 	@Autowired
 	private KafkaEntityConfig kafkaEntityConfig;
 
-	public static final String TOPIC = "net.csini.spring.kafka.entity.City";
-
 	@Test
 	public void test_sendEvent() throws KafkaEntityException, InterruptedException, ExecutionException {
+		
 		Product event = new Product();
 		event.setId("123456");
 		RecordMetadata sendEventMetadata = obs.sendEvent(event);
@@ -42,6 +42,7 @@ public class KafkaEntitySubjectTest {
 
 	@Test
 	public void test_sendUser() throws KafkaEntityException, InterruptedException, ExecutionException {
+		
 		User event = new User("abcdef");
 		Assertions.assertThrows(NullPointerException.class, () -> obs.sendUser(event));
 
@@ -52,6 +53,7 @@ public class KafkaEntitySubjectTest {
 
 	@Test
 	public void test_sendStudent() throws KafkaEntityException, InterruptedException, ExecutionException {
+		
 		Student event = new Student("hrs123", 23);
 		RecordMetadata sendStudentMetadata = obs.sendStudent(event);
 		LOGGER.info("sendStudentMetadata: " + sendStudentMetadata.offset());

@@ -1,35 +1,25 @@
 package net.csini.spring.kafka.observable;
 
 import java.lang.reflect.Field;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteConsumerGroupsResult;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.KafkaFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.NonNull;
@@ -39,10 +29,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.Key;
-import net.csini.spring.kafka.Topic;
 import net.csini.spring.kafka.exception.KafkaEntityException;
-import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
-import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
 
 public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
 

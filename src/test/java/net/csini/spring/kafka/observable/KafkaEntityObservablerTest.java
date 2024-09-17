@@ -22,9 +22,10 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Place;
+import net.csini.spring.kafka.entity.util.TopicUtil;
 
-@SpringBootTest(classes = { SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
-		ExampleKafkaEntityObservableService.class, KafkaProducerConfig.class })
+@SpringBootTest(classes = {TopicUtil.class, SpringKafkaEntityObservableTestConfiguration.class , SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
+		ExampleKafkaEntityObservableService.class, KafkaProducerConfig.class})
 public class KafkaEntityObservablerTest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObservablerTest.class);
@@ -35,8 +36,8 @@ public class KafkaEntityObservablerTest {
 	@Autowired
 	private KafkaTemplate<String, Place> kafkaProducer;
 
-	private String TOPIC = "net.csini.spring.kafka.entity.Place";
-
+	public static final String TOPIC = "net.csini.spring.kafka.entity.Place";
+	
 	@Test
 	public void test_sendEvent() throws Exception {
 		
