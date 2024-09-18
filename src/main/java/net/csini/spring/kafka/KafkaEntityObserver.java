@@ -11,4 +11,6 @@ public @interface KafkaEntityObserver {
 
 	Class entity();
 	
+	boolean transactional() default true;
+	
 }

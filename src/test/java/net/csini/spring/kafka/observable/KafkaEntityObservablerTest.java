@@ -115,8 +115,8 @@ public class KafkaEntityObservablerTest {
 //		Thread.sleep(20000);
 		sentCounterSecond.await();
 
-		LOGGER.warn("waiting maximum 10_0000");
-		thirdCounter.await(10, TimeUnit.SECONDS);
+		LOGGER.warn("waiting maximum 30_0000");
+		thirdCounter.await(30, TimeUnit.SECONDS);
 
 		LOGGER.warn("waiting maximum 120_0000");
 		beforeCounter.await(120, TimeUnit.SECONDS);

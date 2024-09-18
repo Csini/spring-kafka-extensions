@@ -14,13 +14,13 @@ public class ExampleKafkaEntityObservableService {
 	@KafkaEntityObservable(entity = Place.class)
 	private Observable<Place> placeObservable;
 	
-	@KafkaEntityObservable(entity = Place.class, autostart = false)
+	@KafkaEntityObservable(entity = Place.class)
 	private Observable<Place> placeObservableOther;
 	
 	@KafkaEntityObservable(entity = Place.class)
 	private Observable<Place> placeObservableThird;
 	
-	@KafkaEntityObservable(entity = Place.class, autostart = false)
+	@KafkaEntityObservable(entity = Place.class)
 	private Observable<Place> placeObservableBefore;
 
 }

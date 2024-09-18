@@ -11,6 +11,5 @@ public @interface KafkaEntitySubject {
 
 	Class entity();
 	
-	boolean autostart() default true;
-
+	boolean transactional() default true;
 }

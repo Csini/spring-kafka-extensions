@@ -61,6 +61,8 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 
 	private Field keyField;
 
+	private boolean transactional;
+
 	/**
 	 * Constructs a SimpleKafkaObserver.
 	 * 
@@ -88,6 +90,7 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		this.clazz = kafkaEntityObserver.entity();
 		this.clientid = beanName;
 		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
+		this.transactional = kafkaEntityObserver.transactional();
 
 		// presents of @KafkaEntityKey is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
@@ -105,24 +108,26 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		configProps.put(ProducerConfig.CLIENT_ID_CONFIG, clientid);
 
-		configProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, beanName + "-transactional-id");
-
-		configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
-
+		if (transactional) {
+			configProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, beanName + "-transactional-id");
+			configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
 //		configProps.put(ProducerConfig.“transaction.state.log.min.isr”, 2);
+		}
 
 		JsonSerializer<T> valueSerializer = new JsonSerializer<>();
 		JsonKeySerializer<K> keySerializer = new JsonKeySerializer<>();
 
 		this.kafkaProducer = new KafkaProducer<K, T>(configProps, keySerializer, valueSerializer);
 
+		if (transactional) {
 //	      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
-		LOGGER.warn("initTransactions-begin");
-		this.kafkaProducer.initTransactions();
-		LOGGER.warn("initTransactions-end");
+			LOGGER.warn("initTransactions-begin");
+			this.kafkaProducer.initTransactions();
+			LOGGER.warn("initTransactions-end");
+		}
 	}
 
 	public Class<T> getClazz() {
@@ -132,7 +137,6 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 //	public Class<K> getClazzKey() {
 //		return this.clazzKey;
 //	}
-
 
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
@@ -154,7 +158,9 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		LOGGER.info("sending events");
 //		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
-		this.kafkaProducer.beginTransaction();
+		if (transactional) {
+			this.kafkaProducer.beginTransaction();
+		}
 	}
 
 	@Override
@@ -186,13 +192,17 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 	public void onError(Throwable t) {
 		ExceptionHelper.nullCheck(t, "onError called with a null Throwable.");
 		RxJavaPlugins.onError(t);
-		this.kafkaProducer.abortTransaction();
+		if (transactional) {
+			this.kafkaProducer.abortTransaction();
+		}
 		return;
 	}
 
 	@Override
 	public void onComplete() {
-		this.kafkaProducer.commitTransaction();
+		if (transactional) {
+			this.kafkaProducer.commitTransaction();
+		}
 	}
 
 	@Override

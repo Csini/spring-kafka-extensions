@@ -20,7 +20,7 @@ import net.csini.spring.kafka.entity.util.TopicUtil;
 
 @SpringBootTest(classes = { TopicUtil.class, SpringKafkaEntityObserverTestConfiguration.class,
 		SpringKafkaEntityObserverTestApplication.class, KafkaEntityConfig.class, KafkaTemplateConfig.class,
-		ExampleKafkaEntityObserverService.class })
+		CityListener.class, ExampleKafkaEntityObserverService.class, ExampleKafkaEntityObserverNoTransactionService.class })
 //@TestPropertySource("/application.yml")
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092",
@@ -32,6 +32,12 @@ public class KafkaEntityObserverTest {
 
 	@Autowired
 	private ExampleKafkaEntityObserverService obs;
+	
+	@Autowired
+	private ExampleKafkaEntityObserverNoTransactionService obsNoTr;
+	
+	@Autowired
+	private CityListener cityListener;
 
 	public static final String TOPIC = "net.csini.spring.kafka.entity.City";
 
@@ -39,6 +45,7 @@ public class KafkaEntityObserverTest {
 	public void test_sendCity() throws Exception {
 
 		List<City> eventList = obs.getInput();
+		cityListener.init(eventList.size());
 
 		Observer<City> productObservable = obs.getCityObserver();
 
@@ -46,10 +53,30 @@ public class KafkaEntityObserverTest {
 		Thread.sleep(30_000);
 
 		Observable.fromIterable(eventList).subscribe(productObservable);
+		
 
 		LOGGER.warn("waiting maximum 30_0000");
-		obs.getReceivedCounter().await(30, TimeUnit.SECONDS);
+		cityListener.getReceivedCounter().await(30, TimeUnit.SECONDS);
 
-		Assertions.assertEquals(obs.getInput().size(), obs.getCount());
+		Assertions.assertEquals(obs.getInput().size(), cityListener.getCount());
+	}
+	
+	@Test
+	public void test_sendCity_no_transaction() throws Exception {
+
+		List<City> eventList = obsNoTr.getInput();
+		cityListener.init(eventList.size());
+
+		Observer<City> productObservable = obsNoTr.getCityObserver();
+
+		LOGGER.warn("waiting 30_0000");
+		Thread.sleep(30_000);
+
+		Observable.fromIterable(eventList).subscribe(productObservable);
+
+		LOGGER.warn("waiting maximum 30_0000");
+		cityListener.getReceivedCounter().await(30, TimeUnit.SECONDS);
+
+		Assertions.assertEquals(obsNoTr.getInput().size(), cityListener.getCount());
 	}
 }

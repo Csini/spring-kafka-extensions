@@ -13,13 +13,13 @@ import net.csini.spring.kafka.entity.City;
 
 @Service
 @Getter
-public class ExampleKafkaEntityObserverService {
+public class ExampleKafkaEntityObserverNoTransactionService {
 	
-	private static final Logger LOGGER = LoggerFactory.getLogger(ExampleKafkaEntityObserverService.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(ExampleKafkaEntityObserverNoTransactionService.class);
 
-	@KafkaEntityObserver(entity = City.class)
+	@KafkaEntityObserver(entity = City.class, transactional = false)
 	private Observer<City> cityObserver;
 	
-	private List<City> input = List.of(new City("Budapest"), new City("Wien"));
+	private List<City> input = List.of(new City("Debrecen"), new City("Linz"), new City("Szeged"));
 
 }

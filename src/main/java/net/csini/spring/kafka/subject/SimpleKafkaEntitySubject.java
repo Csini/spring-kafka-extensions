@@ -71,6 +71,8 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 
 	private Field keyField;
 
+	private boolean transactional;
+
 	/**
 	 * Constructs a SimpleKafkaObserver.
 	 * 
@@ -102,6 +104,8 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 		this.clientid = beanName;
 		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
 
+		this.transactional = kafkaEntitySubject.transactional();
+
 		// presents of @KafkaEntityKey is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
 			LOGGER.debug("    field  -> " + field.getName());
@@ -118,24 +122,26 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 		configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 		configProps.put(ProducerConfig.CLIENT_ID_CONFIG, clientid);
 
-		configProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, beanName + "-transactional-id");
+		if (transactional) {
+			configProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, beanName + "-transactional-id");
 
-		configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+			configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
 
 //		configProps.put(ProducerConfig.“transaction.state.log.min.isr”, 2);
-
+		}
 		JsonSerializer<T> valueSerializer = new JsonSerializer<>();
 		JsonKeySerializer<K> keySerializer = new JsonKeySerializer<>();
 
 		this.kafkaProducer = new KafkaProducer<K, T>(configProps, keySerializer, valueSerializer);
-
+		if (transactional) {
 //	      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
-		LOGGER.warn("initTransactions-begin");
-		this.kafkaProducer.initTransactions();
-		LOGGER.warn("initTransactions-end");
+			LOGGER.warn("initTransactions-begin");
+			this.kafkaProducer.initTransactions();
+			LOGGER.warn("initTransactions-end");
+		}
 	}
 
 	public Class<T> getClazz() {
@@ -160,7 +166,9 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 
 //		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
-		this.kafkaProducer.beginTransaction();
+		if (transactional) {
+			this.kafkaProducer.beginTransaction();
+		}
 	}
 
 	@Override
@@ -204,7 +212,9 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 		for (PublishDisposable<T, K> pd : subscribers.getAndSet(TERMINATED)) {
 			pd.onError(t);
 		}
-		this.kafkaProducer.abortTransaction();
+		if (transactional) {
+			this.kafkaProducer.abortTransaction();
+		}
 		return;
 	}
 
@@ -217,7 +227,9 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 		for (PublishDisposable<T, K> pd : subscribers.getAndSet(TERMINATED)) {
 			pd.onComplete();
 		}
-		this.kafkaProducer.commitTransaction();
+		if (transactional) {
+			this.kafkaProducer.commitTransaction();
+		}
 	}
 
 	@Override

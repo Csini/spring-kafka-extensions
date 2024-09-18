@@ -51,16 +51,12 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 	private final KafkaEntityPollingRunnable<T, K> pollingRunnable;
 
-	private boolean autostart;
-
 	private String beanName;
 
 	SimpleKafkaEntityObservable(KafkaEntityObservable kafkaEntityObservable, String beanName)
 			throws KafkaEntityException {
 		this.clazz = kafkaEntityObservable.entity();
 		this.groupid = /* getTopicName() + "-observer-" + */ beanName;
-
-		this.autostart = kafkaEntityObservable.autostart();
 
 		// presents of @KafkaEntityKey is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
@@ -79,9 +75,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		this.pollingRunnable = new KafkaEntityPollingRunnable<T, K>(groupid, clazz, clazzKey, subscribers,
 				bootstrapServers, beanName);
 
-		if (this.autostart) {
-			start();
-		}
+		start();
 	}
 
 	public void start() throws KafkaEntityException {
@@ -102,7 +96,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		while (!this.pollingRunnable.getStarted().get()) {
 			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
 //			break;
-				throw new KafkaEntityException(beanName,"KafkaConsumer could not start in 20 sec.");
+				throw new KafkaEntityException(beanName, "KafkaConsumer could not start in 20 sec.");
 			}
 		}
 	}
@@ -135,6 +129,9 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 			KafkaFuture<Void> resultFuture = deleteConsumerGroupsResult.all();
 			resultFuture.get();
+		}catch (Exception e) {
+			//we cannot do anything at this point
+			LOGGER.error(e.getMessage());
 		}
 
 	}
@@ -185,13 +182,6 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 			}
 		}
 
-		if (!this.autostart) {
-			try {
-				start();
-			} catch (KafkaEntityException e) {
-				t.onError(e);
-			}
-		}
 	}
 
 	/**

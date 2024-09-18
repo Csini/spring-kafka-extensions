@@ -11,6 +11,4 @@ public @interface KafkaEntityObservable {
 
 	Class entity();
 	
-	boolean autostart() default true;
-
 }
