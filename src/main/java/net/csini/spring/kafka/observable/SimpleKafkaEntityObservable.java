@@ -28,7 +28,7 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntityObservable;
-import net.csini.spring.kafka.Key;
+import net.csini.spring.kafka.KafkaEntityKey;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 
 public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
@@ -62,10 +62,10 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 		this.autostart = kafkaEntityObservable.autostart();
 
-		// presents of @Key is checked in KafkaEntityConfig
+		// presents of @KafkaEntityKey is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
 			LOGGER.debug("    field  -> " + field.getName());
-			if (field.isAnnotationPresent(Key.class)) {
+			if (field.isAnnotationPresent(KafkaEntityKey.class)) {
 				field.setAccessible(true);
 				this.clazzKey = (Class<K>) field.getType();
 				break;

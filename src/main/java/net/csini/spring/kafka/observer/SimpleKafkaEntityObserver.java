@@ -31,7 +31,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.internal.util.ExceptionHelper;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import net.csini.spring.kafka.KafkaEntityObserver;
-import net.csini.spring.kafka.Key;
+import net.csini.spring.kafka.KafkaEntityKey;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
@@ -89,10 +89,10 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		this.clientid = beanName;
 		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
 
-		// presents of @Key is checked in KafkaEntityConfig
+		// presents of @KafkaEntityKey is checked in KafkaEntityConfig
 		for (Field field : this.clazz.getDeclaredFields()) {
 			LOGGER.debug("    field  -> " + field.getName());
-			if (field.isAnnotationPresent(Key.class)) {
+			if (field.isAnnotationPresent(KafkaEntityKey.class)) {
 				field.setAccessible(true);
 				this.keyField = field;
 				break;

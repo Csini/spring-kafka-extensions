@@ -28,7 +28,7 @@ import net.csini.spring.kafka.KafkaEntity;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.KafkaEntitySubject;
-import net.csini.spring.kafka.Key;
+import net.csini.spring.kafka.KafkaEntityKey;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable;
 import net.csini.spring.kafka.observer.SimpleKafkaEntityObserver;
@@ -167,14 +167,14 @@ public class KafkaEntityConfig {
 		boolean foundKeyAnnotation = false;
 		for (Field field : entity.getDeclaredFields()) {
 			LOGGER.trace("    field  -> " + field.getName());
-			if (field.isAnnotationPresent(Key.class)) {
+			if (field.isAnnotationPresent(KafkaEntityKey.class)) {
 				foundKeyAnnotation = true;
 				break;
 			}
 		}
 
 		if (!foundKeyAnnotation) {
-			throw new KafkaEntityException(beanName, entity.getName() + " @Key is mandatory in @KafkaEntity");
+			throw new KafkaEntityException(beanName, entity.getName() + " @" + KafkaEntityKey.class.getSimpleName() +" is mandatory in @"+KafkaEntity.class.getSimpleName());
 		}
 
 		KafkaEntity topic = KafkaEntityUtil.extractKafkaEntity(entity);

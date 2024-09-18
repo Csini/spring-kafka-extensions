@@ -23,7 +23,7 @@ import net.csini.spring.kafka.KafkaEntity;
 @EqualsAndHashCode(of = "id")
 public class Product {
 
-	@net.csini.spring.kafka.Key
+	@net.csini.spring.kafka.KafkaEntityKey
 	private String id;
 
 	private String title;

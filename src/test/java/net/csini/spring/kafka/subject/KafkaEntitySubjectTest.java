@@ -54,7 +54,7 @@ public class KafkaEntitySubjectTest {
 
 		KafkaEntityException ex = Assertions.assertThrows(KafkaEntityException.class,
 				() -> kafkaEntityConfig.throwFirstError());
-		Assertions.assertEquals("net.csini.spring.kafka.subject.OtherKafkaEntitySubjectService#userSubject: net.csini.spring.kafka.entity.User @Key is mandatory in @KafkaEntity", ex.getMessage());
+		Assertions.assertEquals("net.csini.spring.kafka.subject.OtherKafkaEntitySubjectService#userSubject: net.csini.spring.kafka.entity.User @KafkaEntityKey is mandatory in @KafkaEntity", ex.getMessage());
 	}
 
 	@Test
