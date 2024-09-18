@@ -14,7 +14,7 @@
 	 
 	  <logger name="net.csini.spring.kafka.config" level="debug" />
 	 
-	 <logger name="net.csini.spring.kafka.observable" level="warn" />
+	 <logger name="net.csini.spring.kafka.observable" level="info" />
 	 <logger name="net.csini.spring.kafka.observer" level="info" />
 	 <logger name="net.csini.spring.kafka.subject" level="info" />
 	 

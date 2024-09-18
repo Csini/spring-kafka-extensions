@@ -39,11 +39,12 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 	private final AtomicReference<KafkaEntityObservableDisposable<T, K>[]> subscribers;
 
 	private final List<String> bootstrapServers;
-	
+
 	private final String beanName;
 
-	public KafkaEntityPollingRunnable(String groupid, Class<T> clazz, Class<K> clazzKey, AtomicReference<KafkaEntityObservableDisposable<T, K>[]> subscribers,
-			List<String> bootstrapServers, String beanName) {
+	public KafkaEntityPollingRunnable(String groupid, Class<T> clazz, Class<K> clazzKey,
+			AtomicReference<KafkaEntityObservableDisposable<T, K>[]> subscribers, List<String> bootstrapServers,
+			String beanName) {
 		super();
 		this.groupid = groupid;
 		this.clazz = clazz;
@@ -84,24 +85,29 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 //				System.out.print("...");
 				if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
 //				break;
-					// TODO
 					throw new RuntimeException("KafkaConsumer is not ready.");
 				}
 			}
 
-			LOGGER.warn("started " + this.beanName + "...");
+			if (LOGGER.isDebugEnabled()) {
+				LOGGER.debug("started " + this.beanName + "...");
+			}
 			while (!stopped.get()) {
 				this.started.set(true);
-				
+
 				if (subscribers.get().length > 0) {
-					LOGGER.warn("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
+					LOGGER.info("POLL-" + groupid + " to " + subscribers.get().length + " subscribers");
 					ConsumerRecords<K, T> poll = kafkaConsumer.poll(Duration.ofSeconds(10L));
 
-					LOGGER.warn("count: " + poll.count());
+					if (LOGGER.isDebugEnabled()) {
+						LOGGER.debug("poll.count: " + poll.count());
+					}
 
 					poll.forEach(r -> {
-						// TODO
-						LOGGER.warn("polled:" + r);
+
+						if (LOGGER.isTraceEnabled()) {
+							LOGGER.trace("polled:" + r);
+						}
 
 						for (KafkaEntityObservableDisposable<T, K> pd : subscribers.get()) {
 							pd.onNext(r.value());
@@ -111,7 +117,6 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 				}
 			}
 			kafkaConsumer.unsubscribe();
-//		kafkaConsumer.close();
 			this.started.set(false);
 		}
 	}
@@ -131,5 +136,5 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 	public AtomicBoolean getStarted() {
 		return started;
 	}
-	
+
 }

@@ -33,9 +33,9 @@ import net.csini.spring.kafka.entity.util.TopicUtil;
 @EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092",
 		"offsets.topic.replication.factor=1", "offset.storage.replication.factor=1",
 		"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
-public class KafkaEntityObservablerTest {
+public class KafkaEntityObservableTest {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObservablerTest.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObservableTest.class);
 
 	@Autowired
 	private ExampleKafkaEntityObservableService obs;
@@ -136,7 +136,7 @@ public class KafkaEntityObservablerTest {
 
 	void publishMessages(CountDownLatch sentCounter, int i, int count) throws Exception {
 
-		LOGGER.warn("publishMessages");
+		LOGGER.warn("publishMessages " + i + " " + count);
 
 		for (int placeInt = 0; placeInt < count; placeInt++) {
 

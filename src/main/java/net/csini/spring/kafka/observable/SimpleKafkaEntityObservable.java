@@ -85,13 +85,15 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 			return;
 		}
 
-		LOGGER.warn("starting " + this.beanName + "...");
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug("starting " + this.beanName + "...");
+		}
 
 		Thread pollingThread = new Thread(this.pollingRunnable);
 		pollingThread.setName(beanName + "Thread");
 		pollingThread.start();
 
-		LOGGER.warn("waiting the consumer to start in " + beanName + "Thread...");
+		LOGGER.info("waiting the consumer to start in " + beanName + "Thread...");
 		LocalDateTime then = LocalDateTime.now();
 		while (!this.pollingRunnable.getStarted().get()) {
 			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
@@ -99,10 +101,6 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 				throw new KafkaEntityException(beanName, "KafkaConsumer could not start in 20 sec.");
 			}
 		}
-	}
-
-	public void stop() {
-		this.pollingRunnable.getStopped().set(true);
 	}
 
 	@Override
@@ -113,9 +111,17 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 	@Override
 	public void destroy() throws Exception {
 
-		LOGGER.warn("*** Starting AdminClient to delete a Consumer Group ***" + this.beanName);
+		LOGGER.warn("deleting a Consumer Group for " + this.beanName);
 
-		stop();
+		this.pollingRunnable.getStopped().set(true);
+
+		LOGGER.info("waiting polling to stop");
+		LocalDateTime then = LocalDateTime.now();
+		while (this.pollingRunnable.getStarted().get()) {
+			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
+				break;
+			}
+		}
 
 		final Properties properties = new Properties();
 		properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -129,8 +135,8 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 
 			KafkaFuture<Void> resultFuture = deleteConsumerGroupsResult.all();
 			resultFuture.get();
-		}catch (Exception e) {
-			//we cannot do anything at this point
+		} catch (Exception e) {
+			// we cannot do anything at this point
 			LOGGER.error(e.getMessage());
 		}
 

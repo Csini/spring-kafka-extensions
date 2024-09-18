@@ -15,7 +15,7 @@ public class SpringKafkaEntityObservableTestConfiguration implements Initializin
 	@Override
 	public void afterPropertiesSet() throws Exception {
 
-		topicUtil.createTopic(KafkaEntityObservablerTest.TOPIC);
+		topicUtil.createTopic(KafkaEntityObservableTest.TOPIC);
 	}
 
 }

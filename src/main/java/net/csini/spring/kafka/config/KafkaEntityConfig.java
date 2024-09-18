@@ -61,9 +61,13 @@ public class KafkaEntityConfig {
 			}
 
 			Object bean = applicationContext.getBean(beanName);
-			LOGGER.trace(" bean -> " + bean.getClass());
+			if (LOGGER.isTraceEnabled()) {
+				LOGGER.trace(" bean -> " + bean.getClass());
+			}
 			for (Field field : bean.getClass().getDeclaredFields()) {
-				LOGGER.trace("    field  -> " + field.getName());
+				if (LOGGER.isTraceEnabled()) {
+					LOGGER.trace("    field  -> " + field.getName());
+				}
 				try {
 					if (field.isAnnotationPresent(KafkaEntityObservable.class)) {
 
@@ -88,7 +92,9 @@ public class KafkaEntityConfig {
 			}
 		}
 		String string = result.toString();
-		LOGGER.trace("postConstruct-getAllBeans(): " + string);
+		if (LOGGER.isTraceEnabled()) {
+			LOGGER.trace("postConstruct-getAllBeans(): " + string);
+		}
 
 		return string;
 	}
@@ -100,7 +106,9 @@ public class KafkaEntityConfig {
 		Class entity = kafkaEntityObservable.entity();
 
 		String newBeanName = bean.getClass().getName() + "#" + field.getName();
-		LOGGER.debug("registering " + newBeanName + " as Observable");
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug("registering " + newBeanName + " as Observable");
+		}
 		handleKafkaEntity(newBeanName, entity);
 
 		Class<SimpleKafkaEntityObservable> clazz = SimpleKafkaEntityObservable.class;
@@ -119,7 +127,9 @@ public class KafkaEntityConfig {
 		Class entity = kafkaEntityObserver.entity();
 
 		String newBeanName = bean.getClass().getName() + "#" + field.getName();
-		LOGGER.debug("registering " + newBeanName + " as Observer");
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug("registering " + newBeanName + " as Observer");
+		}
 		handleKafkaEntity(newBeanName, entity);
 
 		Class<SimpleKafkaEntityObserver> clazz = SimpleKafkaEntityObserver.class;
@@ -138,7 +148,9 @@ public class KafkaEntityConfig {
 		Class entity = kafkaEntitySubject.entity();
 
 		String newBeanName = bean.getClass().getName() + "#" + field.getName();
-		LOGGER.debug("registering " + newBeanName + " as Subject");
+		if (LOGGER.isDebugEnabled()) {
+			LOGGER.debug("registering " + newBeanName + " as Subject");
+		}
 		handleKafkaEntity(newBeanName, entity);
 
 		Class<SimpleKafkaEntitySubject> clazz = SimpleKafkaEntitySubject.class;
@@ -166,7 +178,9 @@ public class KafkaEntityConfig {
 
 		boolean foundKeyAnnotation = false;
 		for (Field field : entity.getDeclaredFields()) {
-			LOGGER.trace("    field  -> " + field.getName());
+			if (LOGGER.isTraceEnabled()) {
+				LOGGER.trace("    field  -> " + field.getName());
+			}
 			if (field.isAnnotationPresent(KafkaEntityKey.class)) {
 				foundKeyAnnotation = true;
 				break;
@@ -174,7 +188,8 @@ public class KafkaEntityConfig {
 		}
 
 		if (!foundKeyAnnotation) {
-			throw new KafkaEntityException(beanName, entity.getName() + " @" + KafkaEntityKey.class.getSimpleName() +" is mandatory in @"+KafkaEntity.class.getSimpleName());
+			throw new KafkaEntityException(beanName, entity.getName() + " @" + KafkaEntityKey.class.getSimpleName()
+					+ " is mandatory in @" + KafkaEntity.class.getSimpleName());
 		}
 
 		KafkaEntity topic = KafkaEntityUtil.extractKafkaEntity(entity);
@@ -185,7 +200,8 @@ public class KafkaEntityConfig {
 		}
 	}
 
-	private void checkTopic(Class entity, KafkaEntity topic) throws InterruptedException, ExecutionException, KafkaEntityException {
+	private void checkTopic(Class entity, KafkaEntity topic)
+			throws InterruptedException, ExecutionException, KafkaEntityException {
 		Map<String, Object> conf = new HashMap<>();
 		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
@@ -193,33 +209,14 @@ public class KafkaEntityConfig {
 
 			ListTopicsResult listTopics = admin.listTopics();
 			Set<String> names = listTopics.names().get();
-			LOGGER.debug("names: " + names);
+			if (LOGGER.isTraceEnabled()) {
+				LOGGER.trace("names: " + names);
+			}
 			String topicName = KafkaEntityUtil.getTopicName(entity, topic);
 			boolean contains = names.contains(topicName);
 			if (!contains) {
-				
-				throw new KafkaEntityException(topicName, "Topic " + topicName + " does not exist in " + bootstrapServers);
-				
-//				Map<String, String> configs = new HashMap<String, String>();
-//				int partitions = 1;
-//				Short replication = 1;
-//				if (topic != null) {
-//					partitions = topic.numPartitions();
-//					replication = topic.replicationFactor();
-//				}
-//				NewTopic newTopic = new NewTopic(topicName, partitions, replication).configs(configs);
-//				LOGGER.warn("autocreating " + newTopic);
-//				CreateTopicsResult topicsResult = admin.createTopics(List.of(newTopic));
-//
-//				topicsResult.config(topicName).get();
-//				
-//				admin.describeTopics(List.of(topicName)).allTopicNames().get().get(topicName).partitions()
-//						.forEach(p -> {
-//							p.replicas().size();
-//						});
-//
-////				LOGGER.warn("waiting 10_0000");
-////				Thread.sleep(10_000);
+				throw new KafkaEntityException(topicName,
+						"Topic " + topicName + " does not exist in " + bootstrapServers);
 			}
 		}
 	}

@@ -36,7 +36,9 @@ public class TopicUtil {
 
 			ListTopicsResult listTopics = admin.listTopics();
 			Set<String> names = listTopics.names().get();
-			LOGGER.debug("names: " + names);
+			if(LOGGER.isDebugEnabled()) {
+				LOGGER.debug("names: " + names);
+			}
 			boolean contains = names.contains(topicName);
 			if (!contains) {
 
@@ -44,7 +46,7 @@ public class TopicUtil {
 				int partitions = 1;
 				Short replication = 1;
 				NewTopic newTopic = new NewTopic(topicName, partitions, replication).configs(configs);
-				LOGGER.warn("creating " + newTopic);
+				LOGGER.info("creating Topic " + newTopic);
 				CreateTopicsResult topicsResult = admin.createTopics(List.of(newTopic));
 
 				topicsResult.all().get();

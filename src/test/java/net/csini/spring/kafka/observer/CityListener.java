@@ -22,7 +22,7 @@ public class CityListener {
 
 	@KafkaListener(topics = KafkaEntityObserverTest.TOPIC, containerFactory = "kafkaListenerContainerFactory")
 	public void listenCity(City city) {
-		LOGGER.warn("received: " + city);
+		LOGGER.info("received: " + city);
 		receivedCounter.countDown();
 		count++;
 	}
