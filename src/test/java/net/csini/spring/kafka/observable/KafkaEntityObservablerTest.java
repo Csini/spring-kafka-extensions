@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Observable;
@@ -24,8 +26,13 @@ import net.csini.spring.kafka.config.KafkaEntityConfig;
 import net.csini.spring.kafka.entity.Place;
 import net.csini.spring.kafka.entity.util.TopicUtil;
 
-@SpringBootTest(classes = {TopicUtil.class, SpringKafkaEntityObservableTestConfiguration.class , SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
-		ExampleKafkaEntityObservableService.class, KafkaProducerConfig.class})
+@SpringBootTest(classes = { TopicUtil.class, SpringKafkaEntityObservableTestConfiguration.class,
+		SpringKafkaEntityObservableTestApplication.class, KafkaEntityConfig.class,
+		ExampleKafkaEntityObservableService.class, KafkaProducerConfig.class })
+@DirtiesContext
+@EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092",
+		"offsets.topic.replication.factor=1", "offset.storage.replication.factor=1",
+		"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class KafkaEntityObservablerTest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObservablerTest.class);
@@ -37,10 +44,10 @@ public class KafkaEntityObservablerTest {
 	private KafkaTemplate<String, Place> kafkaProducer;
 
 	public static final String TOPIC = "net.csini.spring.kafka.entity.Place";
-	
+
 	@Test
 	public void test_sendEvent() throws Exception {
-		
+
 		List<Place> eventList = new ArrayList<>();
 		List<Place> eventListOther = new ArrayList<>();
 		List<Place> eventListBefore = new ArrayList<>();
@@ -48,14 +55,14 @@ public class KafkaEntityObservablerTest {
 
 		int sendingFirstCount = 2;
 		int sendingSecondCount = 3;
-		
-		CountDownLatch beforeCounter = new CountDownLatch(sendingFirstCount+sendingSecondCount);
+
+		CountDownLatch beforeCounter = new CountDownLatch(sendingFirstCount + sendingSecondCount);
 		Observable<Place> productObservableBefore = obs.getPlaceObservableBefore();
 		@NonNull
 		Disposable connectBefore = productObservableBefore.subscribe(r -> {
 			LOGGER.info("received-Before: " + r);
 			eventListBefore.add(r);
-			
+
 			beforeCounter.countDown();
 		});
 
@@ -68,10 +75,9 @@ public class KafkaEntityObservablerTest {
 			receivedCounter.countDown();
 		});
 
-		
 		LOGGER.warn("waiting 30_0000");
 		Thread.sleep(30_000);
-		
+
 		CountDownLatch sentCounter = new CountDownLatch(sendingFirstCount);
 		// send events
 		publishMessages(sentCounter, 100, sendingFirstCount);
@@ -108,7 +114,7 @@ public class KafkaEntityObservablerTest {
 		LOGGER.warn("sentCounterSecond.await()");
 //		Thread.sleep(20000);
 		sentCounterSecond.await();
-		
+
 		LOGGER.warn("waiting maximum 10_0000");
 		thirdCounter.await(10, TimeUnit.SECONDS);
 

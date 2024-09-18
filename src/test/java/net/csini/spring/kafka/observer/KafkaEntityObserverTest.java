@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
@@ -20,8 +22,10 @@ import net.csini.spring.kafka.entity.util.TopicUtil;
 		SpringKafkaEntityObserverTestApplication.class, KafkaEntityConfig.class, KafkaTemplateConfig.class,
 		ExampleKafkaEntityObserverService.class })
 //@TestPropertySource("/application.yml")
-//@EmbeddedKafka(partitions = 1, bootstrapServersProperty = "spring.kafka.bootstrap-servers", brokerProperties = {
-//		"log.dir=target/kafka-log", "auto.create.topics.enable=${kafka.broker.topics-enable:true}" })
+@DirtiesContext
+@EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092",
+		"offsets.topic.replication.factor=1", "offset.storage.replication.factor=1",
+		"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class KafkaEntityObserverTest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityObserverTest.class);
