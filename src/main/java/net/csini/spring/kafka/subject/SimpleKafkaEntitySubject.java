@@ -138,9 +138,9 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 //	      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
-			LOGGER.warn("initTransactions-begin");
+			LOGGER.info("initTransactions-begin " + beanName);
 			this.kafkaProducer.initTransactions();
-			LOGGER.warn("initTransactions-end");
+			LOGGER.info("initTransactions-end " +beanName);
 		}
 	}
 

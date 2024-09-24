@@ -83,9 +83,9 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 			LocalDateTime then = LocalDateTime.now();
 			while (kafkaConsumer.committed(kafkaConsumer.assignment()).isEmpty()) {
 //				System.out.print("...");
-				if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
+				if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 60) {
 //				break;
-					throw new RuntimeException("KafkaConsumer is not ready.");
+					throw new RuntimeException("KafkaConsumer is not ready in 60sec.");
 				}
 			}
 

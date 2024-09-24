@@ -96,9 +96,9 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		LOGGER.info("waiting the consumer to start in " + beanName + "Thread...");
 		LocalDateTime then = LocalDateTime.now();
 		while (!this.pollingRunnable.getStarted().get()) {
-			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 20) {
+			if (ChronoUnit.SECONDS.between(then, LocalDateTime.now()) >= 300) {
 //			break;
-				throw new KafkaEntityException(beanName, "KafkaConsumer could not start in 20 sec.");
+				throw new KafkaEntityException(beanName, "KafkaConsumer could not start in 300 sec.");
 			}
 		}
 	}

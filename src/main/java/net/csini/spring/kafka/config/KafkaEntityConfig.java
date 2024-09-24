@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,18 +18,18 @@ import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
-import jakarta.annotation.PostConstruct;
 import net.csini.spring.kafka.KafkaEntity;
+import net.csini.spring.kafka.KafkaEntityKey;
 import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.KafkaEntitySubject;
-import net.csini.spring.kafka.KafkaEntityKey;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable;
 import net.csini.spring.kafka.observer.SimpleKafkaEntityObserver;
@@ -36,23 +37,34 @@ import net.csini.spring.kafka.subject.SimpleKafkaEntitySubject;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
 
 @Configuration
-public class KafkaEntityConfig {
+public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityConfig.class);
 
-	@Value(value = "${spring.kafka.bootstrap-servers:localhost:9092}")
 	private List<String> bootstrapServers = new ArrayList<>(Collections.singletonList("localhost:9092"));
 
-	@Autowired
 	private ApplicationContext applicationContext;
+
+	private Set<String> beanNames = new HashSet<>();
+
+	public KafkaEntityConfig(@Autowired ApplicationContext applicationContext,
+			@Value(value = "${spring.kafka.bootstrap-servers:localhost:9092}") List<String> bootstrapServers) {
+		super();
+		this.applicationContext = applicationContext;
+		if (bootstrapServers != null && !bootstrapServers.isEmpty()) {
+			this.bootstrapServers = Collections.unmodifiableList(bootstrapServers);
+		}
+	}
 
 	private List<KafkaEntityException> errors = new ArrayList<>();
 
-	@PostConstruct
-	public String getAllBeans() {
+	@Override
+	public void afterPropertiesSet() throws KafkaEntityException {
 
 		StringBuilder result = new StringBuilder();
 		String[] allBeans = applicationContext.getBeanDefinitionNames();
+		DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
+				.getAutowireCapableBeanFactory();
 		for (String beanName : allBeans) {
 			result.append(beanName).append("\n");
 
@@ -69,17 +81,34 @@ public class KafkaEntityConfig {
 					LOGGER.trace("    field  -> " + field.getName());
 				}
 				try {
-					if (field.isAnnotationPresent(KafkaEntityObservable.class)) {
 
-						registerKafkaEntityObservableBean(bean, field);
+					if (field.isAnnotationPresent(KafkaEntityObservable.class)
+							|| field.isAnnotationPresent(KafkaEntityObserver.class)
+							|| field.isAnnotationPresent(KafkaEntitySubject.class)) {
+						String newBeanName = bean.getClass().getName() + "#" + field.getName();
+						if (!registry.containsSingleton(newBeanName)) {
+							DisposableBean newInstance = null;
+							if (field.isAnnotationPresent(KafkaEntityObservable.class)) {
 
-					} else if (field.isAnnotationPresent(KafkaEntityObserver.class)) {
+								KafkaEntityObservable kafkaEntityObservable = field
+										.getAnnotation(KafkaEntityObservable.class);
 
-						registerKafkaEntityObserverBean(bean, field);
+								newInstance = registerKafkaEntityObservableBean(bean, newBeanName,
+										kafkaEntityObservable);
 
-					} else if (field.isAnnotationPresent(KafkaEntitySubject.class)) {
+							} else if (field.isAnnotationPresent(KafkaEntityObserver.class)) {
+								KafkaEntityObserver kafkaEntityObserver = field
+										.getAnnotation(KafkaEntityObserver.class);
 
-						registerKafkaEntitySubjectBean(bean, field);
+								newInstance = registerKafkaEntityObserverBean(bean, newBeanName, kafkaEntityObserver);
+
+							} else if (field.isAnnotationPresent(KafkaEntitySubject.class)) {
+								KafkaEntitySubject kafkaEntitySubject = field.getAnnotation(KafkaEntitySubject.class);
+
+								newInstance = registerKafkaEntitySubjectBean(bean, newBeanName, kafkaEntitySubject);
+							}
+							registerBean(registry, bean, field, newBeanName, newInstance);
+						}
 					}
 				} catch (KafkaEntityException e) {
 					LOGGER.error("Error by registering spring-kafka-extension Bean", e);
@@ -96,16 +125,14 @@ public class KafkaEntityConfig {
 			LOGGER.trace("postConstruct-getAllBeans(): " + string);
 		}
 
-		return string;
 	}
 
-	private void registerKafkaEntityObservableBean(Object bean, Field field)
+	private DisposableBean registerKafkaEntityObservableBean(Object bean, String newBeanName,
+			KafkaEntityObservable kafkaEntityObservable)
 			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-		KafkaEntityObservable kafkaEntityObservable = field.getAnnotation(KafkaEntityObservable.class);
 
 		Class entity = kafkaEntityObservable.entity();
 
-		String newBeanName = bean.getClass().getName() + "#" + field.getName();
 		if (LOGGER.isDebugEnabled()) {
 			LOGGER.debug("registering " + newBeanName + " as Observable");
 		}
@@ -117,16 +144,15 @@ public class KafkaEntityConfig {
 		Object obj = method.invoke(null, kafkaEntityObservable, newBeanName);
 		SimpleKafkaEntityObservable<?, ?> newInstance = (SimpleKafkaEntityObservable<?, ?>) obj;
 
-		registerBean(bean, field, newBeanName, newInstance);
+		return newInstance;
 	}
 
-	private void registerKafkaEntityObserverBean(Object bean, Field field)
+	private DisposableBean registerKafkaEntityObserverBean(Object bean, String newBeanName,
+			KafkaEntityObserver kafkaEntityObserver)
 			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-		KafkaEntityObserver kafkaEntityObserver = field.getAnnotation(KafkaEntityObserver.class);
 
 		Class entity = kafkaEntityObserver.entity();
 
-		String newBeanName = bean.getClass().getName() + "#" + field.getName();
 		if (LOGGER.isDebugEnabled()) {
 			LOGGER.debug("registering " + newBeanName + " as Observer");
 		}
@@ -138,16 +164,15 @@ public class KafkaEntityConfig {
 		Object obj = method.invoke(null, kafkaEntityObserver, newBeanName);
 		SimpleKafkaEntityObserver<?, ?> newInstance = (SimpleKafkaEntityObserver<?, ?>) obj;
 
-		registerBean(bean, field, newBeanName, newInstance);
+		return newInstance;
 	}
 
-	private void registerKafkaEntitySubjectBean(Object bean, Field field)
+	private DisposableBean registerKafkaEntitySubjectBean(Object bean, String newBeanName,
+			KafkaEntitySubject kafkaEntitySubject)
 			throws KafkaEntityException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-		KafkaEntitySubject kafkaEntitySubject = field.getAnnotation(KafkaEntitySubject.class);
 
 		Class entity = kafkaEntitySubject.entity();
 
-		String newBeanName = bean.getClass().getName() + "#" + field.getName();
 		if (LOGGER.isDebugEnabled()) {
 			LOGGER.debug("registering " + newBeanName + " as Subject");
 		}
@@ -159,16 +184,16 @@ public class KafkaEntityConfig {
 		Object obj = method.invoke(null, kafkaEntitySubject, newBeanName);
 		SimpleKafkaEntitySubject<?, ?> newInstance = (SimpleKafkaEntitySubject<?, ?>) obj;
 
-		registerBean(bean, field, newBeanName, newInstance);
+		return newInstance;
 	}
 
-	private void registerBean(Object bean, Field field, String newBeanName, DisposableBean newInstance)
-			throws IllegalAccessException {
-		DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
-				.getAutowireCapableBeanFactory();
+	private void registerBean(DefaultSingletonBeanRegistry registry, Object bean, Field field, String newBeanName,
+			DisposableBean newInstance) throws IllegalAccessException {
+		registry.registerSingleton(newBeanName, newInstance);
 		registry.registerDisposableBean(newBeanName, newInstance);
 		field.setAccessible(true);
 		field.set(bean, newInstance);
+		beanNames.add(newBeanName);
 	}
 
 	private void handleKafkaEntity(String beanName, Class entity) throws KafkaEntityException {
@@ -229,6 +254,20 @@ public class KafkaEntityConfig {
 		if (!errors.isEmpty()) {
 			throw errors.get(0);
 		}
+	}
+
+	@Override
+	public void destroy() throws Exception {
+
+		DefaultSingletonBeanRegistry registry = (DefaultSingletonBeanRegistry) applicationContext
+				.getAutowireCapableBeanFactory();
+
+		beanNames.stream().forEach(beanName -> {
+			if (LOGGER.isDebugEnabled()) {
+				LOGGER.debug("destroying " + beanName);
+			}
+			registry.destroySingleton(beanName);
+		});
 	}
 
 }

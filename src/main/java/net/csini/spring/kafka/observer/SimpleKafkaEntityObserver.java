@@ -124,9 +124,9 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 //	      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 //	      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
-			LOGGER.warn("initTransactions-begin");
+			LOGGER.info("initTransactions-begin " + beanName);
 			this.kafkaProducer.initTransactions();
-			LOGGER.warn("initTransactions-end");
+			LOGGER.info("initTransactions-end " + beanName);
 		}
 	}
 
@@ -155,7 +155,9 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 
 	@Override
 	public void onSubscribe(Disposable d) {
-		LOGGER.info("sending events");
+		if (LOGGER.isTraceEnabled()) {
+			LOGGER.trace("sending events");
+		}
 //		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
 		if (transactional) {
