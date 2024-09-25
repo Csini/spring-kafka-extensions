@@ -8,11 +8,11 @@ This library can create automatic an Observer, an Observable and a Subject to ev
 ## add the library as dependency
 
 ```html
-	<dependency>
-		<groupId>net.csini.spring.kafka</groupId>
-		<artifactId>spring-kafka-extensions</artifactId>
-		<version>1.0.0</version>
-	</dependency>
+<dependency>
+	<groupId>net.csini.spring.kafka</groupId>
+	<artifactId>spring-kafka-extensions</artifactId>
+	<version>1.0.0</version>
+</dependency>
 ```
 ## create a `@Bean` from `KafkaEntityConfig` e.g
 
@@ -54,7 +54,7 @@ public class KafkaEntityEnvironment {
 Topic name will be the name of the entity class with included packagename
 but you can use custom Topic name like this `@KafkaEntity(customTopicName = "PRODUCT")`
 
-```
+```java
 package net.csini.spring.kafka.entity;
 
 import net.csini.spring.kafka.KafkaEntity;
@@ -66,7 +66,7 @@ public record Student(@KafkaEntityKey String studentid, int age) {
 }
 ```
 Topic name will be `net.csini.spring.kafka.entity.Student`
-```
+```java
 package net.csini.spring.topic;
 
 import net.csini.spring.kafka.KafkaEntity;
@@ -90,7 +90,7 @@ in a Spring Bean just inject a **KafkaEntityObserver** (City as KafkaEntity is d
 
 default is `transactional=true`
 
-```
+```java
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -119,7 +119,7 @@ in a Spring Bean just inject a **KafkaEntitySubject** (User as KafkaEntity is de
 
 default is `transactional=true`
 
-```
+```java
 import java.util.ArrayList;
 import java.util.List;
 
@@ -153,7 +153,7 @@ public class OtherKafkaEntitySubjectService {
 ## read data from a topic (consume)
 in a Spring Bean just inject a **KafkaEntityObservable** (Place as KafkaEntity is defined [here](src/test/java/net/csini/spring/kafka/entity/Place.java))
 
-```
+```java
 import org.springframework.stereotype.Service;
 
 import io.reactivex.rxjava3.core.Observable;
