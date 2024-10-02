@@ -1,5 +1,5 @@
 # spring-kafka-extensions library
-spring-kafka-extensions is a library that makes an entity based reactive approche (rxjava) to apache kafka, if you are using spring
+spring-kafka-extensions is a library that makes an entity based reactive approach (rxjava) to apache kafka possible, if you are using spring
 
 Imagine that you have per Topic one KafkaEntity and you can read (consume) and write (produce) them easyly reactive. 
 
@@ -44,7 +44,11 @@ public class KafkaEntityEnvironment {
 
 		KafkaEntityConfig kafkaEntityConfig = new KafkaEntityConfig(applicationContext, bootstrapServers);
 		kafkaEntityConfig.afterPropertiesSet();
-		//subscribe to KafkaEntityObservers
+		// here is a good timing to subscribe to KafkaEntityObservers (optional)
+		
+		List<KafkaEntityException> errors = kafkaEntityConfig.getErrors();
+		// handle errors (optional)
+		
 		return kafkaEntityConfig;
 	}
 }

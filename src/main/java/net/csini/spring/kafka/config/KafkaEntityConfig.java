@@ -36,6 +36,12 @@ import net.csini.spring.kafka.observer.SimpleKafkaEntityObserver;
 import net.csini.spring.kafka.subject.SimpleKafkaEntitySubject;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
 
+/**
+ * This Bean creates and registers all KafkaEntity Bean at starting a
+ * spring-boot app
+ * 
+ * @author Csini
+ */
 @Configuration
 public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 
@@ -47,6 +53,15 @@ public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 
 	private Set<String> beanNames = new HashSet<>();
 
+	/**
+	 * use this constructor if you want to create an instance manually
+	 * 
+	 * @param applicationContext spring applicationcontext
+	 * @param bootstrapServers   kafka bootstrap URL, default is looking at spirng
+	 *                           application property
+	 *                           spring.kafka.bootstrap-servers, if it is empty than
+	 *                           "localhost:9092"
+	 */
 	public KafkaEntityConfig(@Autowired ApplicationContext applicationContext,
 			@Value(value = "${spring.kafka.bootstrap-servers:localhost:9092}") List<String> bootstrapServers) {
 		super();
@@ -59,7 +74,7 @@ public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 	private List<KafkaEntityException> errors = new ArrayList<>();
 
 	@Override
-	public void afterPropertiesSet() throws KafkaEntityException {
+	public void afterPropertiesSet() {
 
 		StringBuilder result = new StringBuilder();
 		String[] allBeans = applicationContext.getBeanDefinitionNames();
@@ -217,16 +232,14 @@ public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 					+ " is mandatory in @" + KafkaEntity.class.getSimpleName());
 		}
 
-		KafkaEntity topic = KafkaEntityUtil.extractKafkaEntity(entity);
 		try {
-			checkTopic(entity, topic);
+			checkTopic(entity);
 		} catch (InterruptedException | ExecutionException e) {
 			throw new KafkaEntityException(beanName, e);
 		}
 	}
 
-	private void checkTopic(Class entity, KafkaEntity topic)
-			throws InterruptedException, ExecutionException, KafkaEntityException {
+	private void checkTopic(Class entity) throws InterruptedException, ExecutionException, KafkaEntityException {
 		Map<String, Object> conf = new HashMap<>();
 		conf.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		conf.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "5000");
@@ -237,7 +250,7 @@ public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 			if (LOGGER.isTraceEnabled()) {
 				LOGGER.trace("names: " + names);
 			}
-			String topicName = KafkaEntityUtil.getTopicName(entity, topic);
+			String topicName = KafkaEntityUtil.getTopicName(entity);
 			boolean contains = names.contains(topicName);
 			if (!contains) {
 				throw new KafkaEntityException(topicName,
@@ -246,10 +259,21 @@ public class KafkaEntityConfig implements InitializingBean, DisposableBean {
 		}
 	}
 
+	/**
+	 * get the exceptions, which were created while afterPropertiesSet()
+	 * 
+	 * @return list of KafkaEntityException
+	 */
 	public List<KafkaEntityException> getErrors() {
 		return Collections.unmodifiableList(errors);
 	}
 
+	/**
+	 * throws the first error, which happenened at afterPropertiesSet() if any
+	 * happpened
+	 * 
+	 * @throws KafkaEntityException the first exception
+	 */
 	public void throwFirstError() throws KafkaEntityException {
 		if (!errors.isEmpty()) {
 			throw errors.get(0);

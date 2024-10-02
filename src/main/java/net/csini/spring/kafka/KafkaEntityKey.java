@@ -5,7 +5,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.METHOD, ElementType.FIELD})
+/**
+ * define per topic one class or record and mark with @KafkaEntity (mark a field
+ * with @KafkaEntityKey)
+ * 
+ * @author Csini
+ */
+@Target({ ElementType.FIELD })
 @Retention(RetentionPolicy.RUNTIME)
 public @interface KafkaEntityKey {
 

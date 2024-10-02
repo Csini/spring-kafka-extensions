@@ -36,6 +36,14 @@ import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
 
+/**
+ * implementation class for @KafkaEntitySubject
+ * 
+ * @param <T> class of the entity, representing messages
+ * @param <K> the key from the entity
+ * 
+ * @author Csini
+ */
 public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implements DisposableBean, InitializingBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaEntitySubject.class);
@@ -74,29 +82,24 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 	private boolean transactional;
 
 	/**
-	 * Constructs a SimpleKafkaObserver.
+	 * Constructs a SimpleKafkaEntitySubject.
 	 * 
-	 * @param <T> the value type
-	 * @return the new SimpleKafkaObserver
-	 * @throws KafkaEntityException
-	 * @throws ExecutionException
-	 * @throws InterruptedException
+	 * @param <T>                the value type
+	 * @param <K>                the key type
+	 * @param kafkaEntitySubject annotation
+	 * @param beanName           name of the Kafka Entity Bean
+	 * 
+	 * @return the new SimpleKafkaEntitySubject
+	 * @throws KafkaEntityException problem at creation
 	 */
 	@CheckReturnValue
 	@NonNull
 	public static <T, K> SimpleKafkaEntitySubject<T, K> create(KafkaEntitySubject kafkaEntitySubject, String beanName)
-			throws InterruptedException, ExecutionException, KafkaEntityException {
+			throws KafkaEntityException {
 		return new SimpleKafkaEntitySubject<>(kafkaEntitySubject, beanName);
 	}
 
-	/**
-	 * Constructs a SimpleKafkaObserver.
-	 * 
-	 * @throws KafkaEntityException
-	 * 
-	 */
-	SimpleKafkaEntitySubject(KafkaEntitySubject kafkaEntitySubject, String beanName)
-			throws InterruptedException, ExecutionException {
+	SimpleKafkaEntitySubject(KafkaEntitySubject kafkaEntitySubject, String beanName) {
 
 		subscribers = new AtomicReference<>(EMPTY);
 
@@ -140,17 +143,9 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 
 			LOGGER.info("initTransactions-begin " + beanName);
 			this.kafkaProducer.initTransactions();
-			LOGGER.info("initTransactions-end " +beanName);
+			LOGGER.info("initTransactions-end " + beanName);
 		}
 	}
-
-	public Class<T> getClazz() {
-		return this.clazz;
-	}
-
-//	public Class<K> getClazzKey() {
-//		return this.clazzKey;
-//	}
 
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
@@ -163,8 +158,6 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 		if (subscribers.get() == TERMINATED) {
 			d.dispose();
 		}
-
-//		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
 		if (transactional) {
 			this.kafkaProducer.beginTransaction();
@@ -362,6 +355,7 @@ public final class SimpleKafkaEntitySubject<T, K> extends KafkaSubject<T> implem
 	 * remove itself from the current subscribers array.
 	 *
 	 * @param <T> the value type
+	 * @param <K> the key type
 	 */
 	static final class PublishDisposable<T, K> extends AtomicBoolean implements Disposable {
 

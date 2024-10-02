@@ -27,10 +27,18 @@ import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
-import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.KafkaEntityKey;
+import net.csini.spring.kafka.KafkaEntityObservable;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 
+/**
+ * implementation class for @KafkaEntityObservable
+ * 
+ * @param <T> class of the entity, representing messages
+ * @param <K> the key from the entity
+ * 
+ * @author Csini
+ */
 public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements DisposableBean, InitializingBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaEntityObservable.class);
@@ -78,7 +86,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 		start();
 	}
 
-	public void start() throws KafkaEntityException {
+	private void start() throws KafkaEntityException {
 
 		if (this.pollingRunnable.getStarted().get()) {
 			LOGGER.warn("already started...");
@@ -158,9 +166,14 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 	/**
 	 * Constructs a SimpleKafkaObservableHandler.
 	 * 
-	 * @param <T> the value type
+	 * @param <T>                   the value type
+	 * @param <K>                   the key type
+	 * @param kafkaEntityObservable annotation
+	 * @param beanName              name of the Kafka Entity Bean
+	 * 
+	 * 
 	 * @return the new SimpleKafkaObservableHandler
-	 * @throws KafkaEntityException
+	 * @throws KafkaEntityException problem at creation
 	 */
 	@CheckReturnValue
 	@NonNull
@@ -262,6 +275,7 @@ public class SimpleKafkaEntityObservable<T, K> extends Observable<T> implements 
 	 * remove itself from the current subscribers array.
 	 *
 	 * @param <T> the value type
+	 * @param <K> the key type
 	 */
 	static final class KafkaEntityObservableDisposable<T, K> extends AtomicBoolean implements Disposable {
 

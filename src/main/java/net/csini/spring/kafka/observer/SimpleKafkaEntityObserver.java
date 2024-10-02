@@ -1,9 +1,6 @@
 package net.csini.spring.kafka.observer;
 
 import java.lang.reflect.Field;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,12 +27,20 @@ import io.reactivex.rxjava3.core.Observer;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.internal.util.ExceptionHelper;
 import io.reactivex.rxjava3.plugins.RxJavaPlugins;
-import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.KafkaEntityKey;
+import net.csini.spring.kafka.KafkaEntityObserver;
 import net.csini.spring.kafka.exception.KafkaEntityException;
 import net.csini.spring.kafka.mapping.JsonKeySerializer;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
 
+/**
+ * implementation class for @KafkaEntityObserver
+ * 
+ * @param <T> class of the entity, representing messages
+ * @param <K> the key from the entity
+ * 
+ * @author Csini
+ */
 public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, DisposableBean, InitializingBean {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SimpleKafkaEntityObserver.class);
@@ -66,27 +71,22 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 	/**
 	 * Constructs a SimpleKafkaObserver.
 	 * 
-	 * @param <T> the value type
+	 * @param <T>                 the value type
+	 * @param <K>                 the key type
+	 * @param kafkaEntityObserver annotation
+	 * @param beanName            name of the Kafka Entity Bean
+	 * 
 	 * @return the new SimpleKafkaObserver
-	 * @throws KafkaEntityException
-	 * @throws ExecutionException
-	 * @throws InterruptedException
+	 * @throws KafkaEntityException problem at creation
 	 */
 	@CheckReturnValue
 	@NonNull
 	public static <T, K> SimpleKafkaEntityObserver<T, K> create(KafkaEntityObserver kafkaEntityObserver,
-			String beanName) throws InterruptedException, ExecutionException, KafkaEntityException {
+			String beanName) throws KafkaEntityException {
 		return new SimpleKafkaEntityObserver<>(kafkaEntityObserver, beanName);
 	}
 
-	/**
-	 * Constructs a SimpleKafkaObserver.
-	 * 
-	 * @throws KafkaEntityException
-	 * 
-	 */
-	SimpleKafkaEntityObserver(KafkaEntityObserver kafkaEntityObserver, String beanName)
-			throws InterruptedException, ExecutionException, KafkaEntityException {
+	SimpleKafkaEntityObserver(KafkaEntityObserver kafkaEntityObserver, String beanName) throws KafkaEntityException {
 		this.clazz = kafkaEntityObserver.entity();
 		this.clientid = beanName;
 		this.topic = KafkaEntityUtil.getTopicName(this.clazz);
@@ -130,27 +130,8 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		}
 	}
 
-	public Class<T> getClazz() {
-		return this.clazz;
-	}
-
-//	public Class<K> getClazzKey() {
-//		return this.clazzKey;
-//	}
-
 	private K extractKey(T event) throws IllegalArgumentException, IllegalAccessException {
 		return (K) this.keyField.get(event);
-	}
-
-	private LocalDateTime convertToLocalDatetime(RecordMetadata recordMetadata) {
-
-		long epochTimeMillis = recordMetadata.timestamp();
-		Instant instant = Instant.ofEpochMilli(epochTimeMillis);
-
-		// Use the system default time zone
-		ZoneId zoneId = ZoneId.systemDefault();
-		LocalDateTime localDateTime = instant.atZone(zoneId).toLocalDateTime();
-		return localDateTime;
 	}
 
 	@Override
@@ -158,7 +139,6 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 		if (LOGGER.isTraceEnabled()) {
 			LOGGER.trace("sending events");
 		}
-//		String topic = KafkaEntityUtil.getTopicName(getClazz());
 
 		if (transactional) {
 			this.kafkaProducer.beginTransaction();
@@ -168,18 +148,17 @@ public final class SimpleKafkaEntityObserver<T, K> implements Observer<T>, Dispo
 	@Override
 	public void onNext(T t) {
 		ExceptionHelper.nullCheck(t, "onNext called with a null value.");
-		CompletableFuture<LocalDateTime> completableFuture = new CompletableFuture<>();
+		CompletableFuture<RecordMetadata> completableFuture = new CompletableFuture<>();
 		K key;
 		try {
 			key = extractKey(t);
 
 			ProducerRecord<K, T> rec = new ProducerRecord<K, T>(topic, key, t);
 			Future<RecordMetadata> send = this.kafkaProducer.send(rec);
-			completableFuture.complete(convertToLocalDatetime(send.get()));
+			completableFuture.complete(send.get());
 		} catch (InterruptedException | ExecutionException e) {
 			completableFuture.completeExceptionally(e);
 		} catch (IllegalAccessException e) {
-//			throw new KafkaEntityWarapperException(e);
 			completableFuture.completeExceptionally(e);
 		}
 

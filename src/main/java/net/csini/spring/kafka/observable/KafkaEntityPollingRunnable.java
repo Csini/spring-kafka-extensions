@@ -21,6 +21,15 @@ import net.csini.spring.kafka.mapping.JsonKeyDeserializer;
 import net.csini.spring.kafka.observable.SimpleKafkaEntityObservable.KafkaEntityObservableDisposable;
 import net.csini.spring.kafka.util.KafkaEntityUtil;
 
+/**
+ * this runnable is constantly polling a kafka-consumer for 10 sec after started
+ * until it is stopped if there is minimum 1 subscriber
+ * 
+ * @param <T> class of the entity, representing messages
+ * @param <K> the key from the entity
+ * 
+ * @author Csini
+ */
 public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(KafkaEntityPollingRunnable.class);
@@ -42,7 +51,7 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 
 	private final String beanName;
 
-	public KafkaEntityPollingRunnable(String groupid, Class<T> clazz, Class<K> clazzKey,
+	KafkaEntityPollingRunnable(String groupid, Class<T> clazz, Class<K> clazzKey,
 			AtomicReference<KafkaEntityObservableDisposable<T, K>[]> subscribers, List<String> bootstrapServers,
 			String beanName) {
 		super();
@@ -121,18 +130,38 @@ public class KafkaEntityPollingRunnable<T, K> implements Runnable {
 		}
 	}
 
+	/**
+	 * Getter to message class
+	 * 
+	 * @return message class
+	 */
 	public Class<T> getClazz() {
 		return this.clazz;
 	}
 
+	/**
+	 * Getter to message key class
+	 * 
+	 * @return message key class
+	 */
 	public Class<K> getClazzKey() {
 		return this.clazzKey;
 	}
 
+	/**
+	 * Getter to is the polling stopped
+	 * 
+	 * @return stopped
+	 */
 	public AtomicBoolean getStopped() {
 		return stopped;
 	}
 
+	/**
+	 * Getter to is the polling started
+	 * 
+	 * @return started
+	 */
 	public AtomicBoolean getStarted() {
 		return started;
 	}
