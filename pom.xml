@@ -7,7 +7,8 @@
 	<version>1.0.0-SNAPSHOT</version>
 
 	<name>${project.groupId}:${project.artifactId}</name>
-	<description>A library that makes an entity based reactive approach (rxjava) to apache kafka possible, if you are using spring</description>
+	<description>A library that makes an entity based reactive approach (rxjava)
+		to apache kafka possible, if you are using spring</description>
 	<url>https://github.com/Csini/spring-kafka-extensions</url>
 
 	<licenses>
@@ -39,7 +40,7 @@
 		<maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
 		<maven-source-plugin.version>2.2.1</maven-source-plugin.version>
 		<maven-javadoc-plugin.version>3.10.0</maven-javadoc-plugin.version>
-		<maven-gpg-plugin.version>1.5</maven-gpg-plugin.version>
+		<maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
 
 		<spring-boot.version>3.3.2</spring-boot.version>
 
@@ -180,20 +181,43 @@
 					</execution>
 				</executions>
 			</plugin>
-<!--			<plugin>-->
-<!--				<groupId>org.apache.maven.plugins</groupId>-->
-<!--				<artifactId>maven-gpg-plugin</artifactId>-->
-<!--				<version>${maven-gpg-plugin.version}</version>-->
-<!--				<executions>-->
-<!--					<execution>-->
-<!--						<id>sign-artifacts</id>-->
-<!--						<phase>verify</phase>-->
-<!--						<goals>-->
-<!--							<goal>sign</goal>-->
-<!--						</goals>-->
-<!--					</execution>-->
-<!--				</executions>-->
-<!--			</plugin>-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<version>${maven-gpg-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>sign-artifacts</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>sign</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<useAgent>false</useAgent>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.sonatype.central</groupId>
+				<artifactId>central-publishing-maven-plugin</artifactId>
+				<version>0.6.0</version>
+				<extensions>true</extensions>
+				<configuration>
+					<publishingServerId>central</publishingServerId>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+		<repository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
 </project>
