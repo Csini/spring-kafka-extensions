@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.csini.spring.kafka</groupId>
 	<artifactId>spring-kafka-extensions</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.0.0</version>
 
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>A library that makes an entity based reactive approach (rxjava)
