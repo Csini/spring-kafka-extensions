@@ -1,4 +1,8 @@
 # spring-kafka-extensions library
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Maven Central](https://img.shields.io/maven-central/v/net.csini.spring.kafka/spring-kafka-extensions.svg?label=Maven%20Central)](https://search.maven.org/artifact/net.csini.spring.kafka/spring-kafka-extensions)
+
 spring-kafka-extensions is a library that makes an entity based reactive approach (rxjava) to apache kafka possible, if you are using spring
 
 Imagine that you have per Topic one KafkaEntity and you can read (consume) and write (produce) them easyly reactive. 
