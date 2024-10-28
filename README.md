@@ -1,3 +1,6 @@
+<p align="left">
+    <img src="img/spring-kafka-extensions-logo.png" alt="spring-kafka-extensions-logo" width="300">
+</p>
 # spring-kafka-extensions library
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,6 +11,9 @@ spring-kafka-extensions is a library that makes an entity based reactive approac
 Imagine that you have per Topic one KafkaEntity and you can read (consume) and write (produce) them easyly reactive. 
 
 This library can create automatic an Observer, an Observable and a Subject to every KafkaEntity! All you need to do is to use the custom `@KafkaEntity`, `@KafkaEntityKey`, `@KafkaEntityObserver`, `@KafkaEntityObservable` and `@KafkaEntitySubject` annotations!
+# overview
+![spring-kafka-extensions-overview](img/spring-kafka-extensions-overview.png)
+
 # how to install
 ## add the library as dependency
 
@@ -18,6 +24,9 @@ This library can create automatic an Observer, an Observable and a Subject to ev
 	<version>1.0.0</version>
 </dependency>
 ```
+
+actual version is uploaded to Maven Central [here](https://repo1.maven.org/maven2/net/csini/spring/kafka/spring-kafka-extensions/)
+
 ## create a `@Bean` from `KafkaEntityConfig` e.g
 
 ```java
