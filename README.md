@@ -1,6 +1,7 @@
 <p align="left">
     <img src="img/spring-kafka-extensions-logo.png" alt="spring-kafka-extensions-logo" width="300">
 </p>
+
 # spring-kafka-extensions library
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
